@@ -2,7 +2,7 @@
 // Drop this file into your React project src/api/ folder
 // It connects the SupplyGuard AI dashboard to the FastAPI backend
 
-const BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:8000";
+const BASE_URL = process.env.REACT_APP_API_URL || "https://supplyguard-api-dp47.onrender.com";
 
 const get = (path) =>
   fetch(`${BASE_URL}${path}`).then((r) => r.json());
