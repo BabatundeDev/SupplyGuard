@@ -19,11 +19,11 @@ SupplyGuard AI is a full-stack, AI-powered supply chain risk intelligence platfo
 
 | Service | URL |
 |---|---|
-| Frontend Dashboard | `http://localhost:3000` |
-| Backend API | `http://localhost:8000` |
-| API Docs (Swagger) | `http://localhost:8000/docs` |
-| Backend Repo | [supplyguard-api](https://github.com/BabatundeDev/supplyguard-api) |
-
+| Frontend Dashboard | [supplyguard-dashboard.vercel.app](https://supplyguard-dashboard.vercel.app) |
+| Backend API | [supplyguard-api-dp47.onrender.com](https://supplyguard-api-dp47.onrender.com) |
+| API Docs (Swagger) | [supplyguard-api-dp47.onrender.com/docs](https://supplyguard-api-dp47.onrender.com/docs) |
+| Frontend Repo | [BabatundeDev/SupplyGuard](https://github.com/BabatundeDev/SupplyGuard) |
+| Backend Repo | [BabatundeDev/supplyguard-api](https://github.com/BabatundeDev/supplyguard-api) |
 ---
 
 ## Features
