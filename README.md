@@ -1,70 +1,148 @@
-# Getting Started with Create React App
+# SupplyGuard AI — Frontend Dashboard
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+> AI-powered automotive supply chain risk intelligence dashboard built for the **ET AutoTech Hackathon 2026**.
 
-## Available Scripts
+![SupplyGuard AI](https://img.shields.io/badge/SupplyGuard-AI-3B9EFF?style=for-the-badge&logo=react)
+![React](https://img.shields.io/badge/React-18-61DAFB?style=for-the-badge&logo=react)
+![FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688?style=for-the-badge&logo=fastapi)
+![Hackathon](https://img.shields.io/badge/ET%20AutoTech-Hackathon%202026-FF4D4D?style=for-the-badge)
 
-In the project directory, you can run:
+---
 
-### `npm start`
+## What is SupplyGuard AI?
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+SupplyGuard AI is a full-stack, AI-powered supply chain risk intelligence platform for the automotive industry. It addresses **Theme 1: AI for Resilient Automotive Supply Chains & Smart Manufacturing** by proactively detecting, predicting, and mitigating supply chain disruptions using machine learning.
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+---
 
-### `npm test`
+## Live Demo
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+| Service | URL |
+|---|---|
+| Frontend Dashboard | `http://localhost:3000` |
+| Backend API | `http://localhost:8000` |
+| API Docs (Swagger) | `http://localhost:8000/docs` |
+| Backend Repo | [supplyguard-api](https://github.com/BabatundeDev/supplyguard-api) |
 
-### `npm run build`
+---
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+## Features
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+### Overview Screen
+Real-time KPI cards showing active suppliers, high-risk alerts, average portfolio risk score, and alternate suppliers ready. Includes a 12-month portfolio risk area chart and a material category risk bar chart powered by live AI predictions.
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+### Supplier Intelligence Screen
+Full sortable and filterable supplier table with AI-predicted risk scores, color-coded severity badges, star ratings, lead time tracking, geopolitical risk scores, and a live alternate sourcing engine modal that fires real API calls.
 
-### `npm run eject`
+### Demand Forecast Screen
+12-week inventory demand projection using Holt-Winters Exponential Smoothing with 80% confidence bands. Switchable across Semiconductors, Battery Metals, and Steel categories. Includes AI-generated insights for peak demand week, average weekly demand, and recommended reorder timing.
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+### Disruption Alerts Screen
+Live geopolitical and supplier-level disruption alerts with severity classification (Critical, High, Medium, Low). Auto-refreshes every 60 seconds. Dismissable with restore capability.
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+---
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+## Tech Stack
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+| Layer | Technology |
+|---|---|
+| Frontend | React 18, Recharts, Tailwind CSS |
+| Backend | Python FastAPI |
+| Risk Model | scikit-learn GradientBoostingRegressor (R² = 0.983) |
+| Forecasting | Statsmodels Holt-Winters Exponential Smoothing |
+| Deployment | Vercel (frontend), Render (backend) |
 
-## Learn More
+---
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+## Architecture
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+```
+┌─────────────────────────────────────────┐
+│         React Dashboard (Port 3000)      │
+│  Overview │ Suppliers │ Forecast │ Alerts│
+└──────────────────┬──────────────────────┘
+                   │ HTTP / REST
+┌──────────────────▼──────────────────────┐
+│         FastAPI Backend (Port 8000)      │
+│  /risk  │  /forecast  │  /alerts         │
+└──────────────────┬──────────────────────┘
+                   │
+┌──────────────────▼──────────────────────┐
+│              AI / ML Layer               │
+│  GradientBoosting Risk Scorer            │
+│  Holt-Winters Demand Forecaster          │
+│  50-supplier training dataset            │
+└─────────────────────────────────────────┘
+```
 
-### Code Splitting
+---
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+## Getting Started
 
-### Analyzing the Bundle Size
+### Prerequisites
+- Node.js 18+
+- Python 3.10+
+- Backend repo running at `localhost:8000`
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+### 1. Clone and install
 
-### Making a Progressive Web App
+```bash
+git clone https://github.com/BabatundeDev/supplyguard.git
+cd supplyguard
+npm install
+```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+### 2. Start the backend first
 
-### Advanced Configuration
+```bash
+git clone https://github.com/BabatundeDev/supplyguard-api.git
+cd supplyguard-api
+pip install -r requirements.txt
+python -m uvicorn main:app --reload --port 8000
+```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+### 3. Start the frontend
 
-### Deployment
+```bash
+cd supplyguard
+npm start
+```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+Open `http://localhost:3000` to view the dashboard.
 
-### `npm run build` fails to minify
+---
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+## API Endpoints
+
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/risk/all-suppliers` | All suppliers with AI risk scores |
+| POST | `/risk/alternate-suppliers` | Recommend low-risk alternates |
+| GET | `/risk/portfolio-summary` | Risk by material category |
+| GET | `/forecast/demand` | 12-week demand forecast |
+| GET | `/alerts/` | Live disruption alerts |
+
+---
+
+## Judging Criteria Alignment
+
+| Criteria | Weight | How we address it |
+|---|---|---|
+| Correctness & Performance | 30% | Live ML model predictions with R² = 0.983 |
+| Clarity of Presentation | 20% | Clean dashboard UX with real-time data |
+| Technical Depth | 20% | Full-stack: React + FastAPI + ML pipeline |
+| Innovation & Creativity | 10% | Geopolitical risk scoring + AI alternate sourcing |
+| Automotive Ecosystem Impact | 10% | Addresses real supply chain disruption pain points |
+| User Experience & Design | 10% | Dark-mode dashboard with live data and animations |
+
+---
+
+## Built By
+
+**Babatunde** — ET AutoTech Hackathon 2026 | Theme 1: AI for Resilient Automotive Supply Chains
+
+---
+
+## License
+
+MIT
