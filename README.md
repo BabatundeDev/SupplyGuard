@@ -2,20 +2,13 @@
 
 > AI-powered automotive supply chain risk intelligence dashboard built for the **ET AutoTech Hackathon 2026**.
 
-![SupplyGuard AI](https://img.shields.io/badge/SupplyGuard-AI-3B9EFF?style=for-the-badge&logo=react)
 ![React](https://img.shields.io/badge/React-18-61DAFB?style=for-the-badge&logo=react)
-![FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688?style=for-the-badge&logo=fastapi)
+![Vercel](https://img.shields.io/badge/Deployed-Vercel-000000?style=for-the-badge&logo=vercel)
 ![Hackathon](https://img.shields.io/badge/ET%20AutoTech-Hackathon%202026-FF4D4D?style=for-the-badge)
 
 ---
 
-## What is SupplyGuard AI?
-
-SupplyGuard AI is a full-stack, AI-powered supply chain risk intelligence platform for the automotive industry. It addresses **Theme 1: AI for Resilient Automotive Supply Chains & Smart Manufacturing** by proactively detecting, predicting, and mitigating supply chain disruptions using machine learning.
-
----
-
-## Live Demo
+## 🚀 Live Demo
 
 | Service | URL |
 |---|---|
@@ -24,125 +17,130 @@ SupplyGuard AI is a full-stack, AI-powered supply chain risk intelligence platfo
 | API Docs (Swagger) | [supplyguard-api-dp47.onrender.com/docs](https://supplyguard-api-dp47.onrender.com/docs) |
 | Frontend Repo | [BabatundeDev/SupplyGuard](https://github.com/BabatundeDev/SupplyGuard) |
 | Backend Repo | [BabatundeDev/supplyguard-api](https://github.com/BabatundeDev/supplyguard-api) |
----
-
-## Features
-
-### Overview Screen
-Real-time KPI cards showing active suppliers, high-risk alerts, average portfolio risk score, and alternate suppliers ready. Includes a 12-month portfolio risk area chart and a material category risk bar chart powered by live AI predictions.
-
-### Supplier Intelligence Screen
-Full sortable and filterable supplier table with AI-predicted risk scores, color-coded severity badges, star ratings, lead time tracking, geopolitical risk scores, and a live alternate sourcing engine modal that fires real API calls.
-
-### Demand Forecast Screen
-12-week inventory demand projection using Holt-Winters Exponential Smoothing with 80% confidence bands. Switchable across Semiconductors, Battery Metals, and Steel categories. Includes AI-generated insights for peak demand week, average weekly demand, and recommended reorder timing.
-
-### Disruption Alerts Screen
-Live geopolitical and supplier-level disruption alerts with severity classification (Critical, High, Medium, Low). Auto-refreshes every 60 seconds. Dismissable with restore capability.
 
 ---
 
-## Tech Stack
+## 🧠 What is SupplyGuard AI?
+
+SupplyGuard AI is a full-stack AI-powered supply chain risk intelligence platform for the automotive industry. It addresses **Theme 1: AI for Resilient Automotive Supply Chains & Smart Manufacturing** by proactively detecting, predicting, and mitigating supply chain disruptions using machine learning.
+
+---
+
+## ✨ Features
+
+### 📊 Overview Screen
+Real-time KPI cards showing active suppliers, high-risk alert count, AI-predicted average portfolio risk score, and alternate suppliers ready. Includes a 12-month portfolio risk area chart and a material category risk bar chart powered by live API predictions.
+
+### 🏭 Supplier Intelligence Screen
+Full sortable and filterable supplier table with AI-predicted risk scores, colour-coded severity badges, star ratings, lead time tracking, and geopolitical risk scores. Clicking "Find alternate" fires a live API call to the alternate sourcing engine and returns ranked low-risk backup suppliers instantly.
+
+### 📈 Demand Forecast Screen
+12-week inventory demand projection using Holt-Winters Exponential Smoothing with 80% confidence bands. Switchable across Semiconductors, Battery Metals, and Steel. Includes AI-generated insights for peak demand week, average weekly demand, and recommended reorder timing.
+
+### 🚨 Disruption Alerts Screen
+Live geopolitical and AI-detected supplier-level disruption alerts with severity classification (Critical, High, Medium, Low). Auto-refreshes every 60 seconds. Dismissable with one-click restore.
+
+---
+
+## 🛠 Tech Stack
 
 | Layer | Technology |
 |---|---|
-| Frontend | React 18, Recharts, Tailwind CSS |
-| Backend | Python FastAPI |
-| Risk Model | scikit-learn GradientBoostingRegressor (R² = 0.983) |
-| Forecasting | Statsmodels Holt-Winters Exponential Smoothing |
-| Deployment | Vercel (frontend), Render (backend) |
+| Framework | React 18 |
+| Charts | Recharts |
+| Styling | Inline CSS with CSS variables |
+| API Client | Native Fetch API |
+| Deployment | Vercel |
 
 ---
 
-## Architecture
+## 🏗 Architecture
 
 ```
-┌─────────────────────────────────────────┐
-│         React Dashboard (Port 3000)      │
-│  Overview │ Suppliers │ Forecast │ Alerts│
-└──────────────────┬──────────────────────┘
-                   │ HTTP / REST
-┌──────────────────▼──────────────────────┐
-│         FastAPI Backend (Port 8000)      │
-│  /risk  │  /forecast  │  /alerts         │
-└──────────────────┬──────────────────────┘
+┌─────────────────────────────────────────────┐
+│        React Dashboard (Vercel)              │
+│  Overview │ Suppliers │ Forecast │ Alerts    │
+└──────────────────┬──────────────────────────┘
+                   │ HTTP REST API
+┌──────────────────▼──────────────────────────┐
+│      FastAPI Backend (Render)                │
+│  /risk  │  /forecast  │  /alerts             │
+└──────────────────┬──────────────────────────┘
                    │
-┌──────────────────▼──────────────────────┐
-│              AI / ML Layer               │
-│  GradientBoosting Risk Scorer            │
-│  Holt-Winters Demand Forecaster          │
-│  50-supplier training dataset            │
-└─────────────────────────────────────────┘
+┌──────────────────▼──────────────────────────┐
+│           AI / ML Layer                      │
+│  GradientBoosting Risk Scorer (R² = 0.982)   │
+│  Holt-Winters Demand Forecaster              │
+│  50-supplier training dataset                │
+└─────────────────────────────────────────────┘
 ```
 
 ---
 
-## Getting Started
+## ⚡ Getting Started
 
 ### Prerequisites
 - Node.js 18+
-- Python 3.10+
-- Backend repo running at `localhost:8000`
+- Backend running at `localhost:8000` or set `REACT_APP_API_URL`
 
-### 1. Clone and install
+### Install and run
 
 ```bash
-git clone https://github.com/BabatundeDev/supplyguard.git
-cd supplyguard
+git clone https://github.com/BabatundeDev/SupplyGuard.git
+cd SupplyGuard
 npm install
-```
-
-### 2. Start the backend first
-
-```bash
-git clone https://github.com/BabatundeDev/supplyguard-api.git
-cd supplyguard-api
-pip install -r requirements.txt
-python -m uvicorn main:app --reload --port 8000
-```
-
-### 3. Start the frontend
-
-```bash
-cd supplyguard
 npm start
 ```
 
-Open `http://localhost:3000` to view the dashboard.
+Open `http://localhost:3000`
+
+### Environment variable (optional)
+
+Create a `.env` file in the root:
+
+```
+REACT_APP_API_URL=https://supplyguard-api-dp47.onrender.com
+```
 
 ---
 
-## API Endpoints
+## 📁 Project Structure
 
-| Method | Endpoint | Description |
-|---|---|---|
-| GET | `/risk/all-suppliers` | All suppliers with AI risk scores |
-| POST | `/risk/alternate-suppliers` | Recommend low-risk alternates |
-| GET | `/risk/portfolio-summary` | Risk by material category |
-| GET | `/forecast/demand` | 12-week demand forecast |
-| GET | `/alerts/` | Live disruption alerts |
+```
+supplyguard/
+├── public/
+│   ├── index.html          # Zero-margin, DM Sans font, dark bg
+│   ├── favicon.ico         # Custom SupplyGuard favicon
+│   └── logo192.png
+├── src/
+│   ├── api/
+│   │   └── supplyguardApi.js   # API client for all backend calls
+│   ├── App.js                  # Main dashboard component
+│   └── index.js
+└── package.json
+```
 
 ---
 
-## Judging Criteria Alignment
+## 🏆 Judging Criteria Alignment
 
 | Criteria | Weight | How we address it |
 |---|---|---|
-| Correctness & Performance | 30% | Live ML model predictions with R² = 0.983 |
-| Clarity of Presentation | 20% | Clean dashboard UX with real-time data |
-| Technical Depth | 20% | Full-stack: React + FastAPI + ML pipeline |
-| Innovation & Creativity | 10% | Geopolitical risk scoring + AI alternate sourcing |
-| Automotive Ecosystem Impact | 10% | Addresses real supply chain disruption pain points |
-| User Experience & Design | 10% | Dark-mode dashboard with live data and animations |
+| Correctness & Performance | 30% | Live ML predictions from real API with R² = 0.982 |
+| Clarity of Presentation | 20% | Polished dark dashboard with live data and loading states |
+| Technical Depth | 20% | Full-stack React + FastAPI + ML pipeline end to end |
+| Innovation & Creativity | 10% | Geopolitical risk scoring + AI alternate sourcing engine |
+| Automotive Ecosystem Impact | 10% | Directly addresses automotive supply chain disruption |
+| User Experience & Design | 10% | Dark-mode dashboard, animations, error handling, auto-refresh |
 
 ---
 
-## Built By
+## 👨‍💻 Built By
 
 **Babatunde** — ET AutoTech Hackathon 2026 | Theme 1: AI for Resilient Automotive Supply Chains
 
 ---
 
-## License
+## 📄 License
 
 MIT
