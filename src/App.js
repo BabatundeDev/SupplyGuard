@@ -147,7 +147,7 @@ export default function SupplyGuardAI() {
       setSuppliers(supRes.suppliers || []);
       setPortfolio({ ...supRes, materials: portRes.materials });
     } catch {
-      setErr("suppliers", "Cannot reach backend at localhost:8000 — is uvicorn running?");
+      setErr("suppliers", "Backend is waking up — please wait 50 seconds and click Retry.");
     } finally {
       setLoading(l => ({ ...l, suppliers:false }));
     }
