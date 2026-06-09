@@ -75,35 +75,6 @@ Live geopolitical and AI-detected supplier-level disruption alerts with severity
 └─────────────────────────────────────────────┘
 ```
 
----
-
-## ⚡ Getting Started
-
-### Prerequisites
-- Node.js 18+
-- Backend running at `localhost:8000` or set `REACT_APP_API_URL`
-
-### Install and run
-
-```bash
-git clone https://github.com/BabatundeDev/SupplyGuard.git
-cd SupplyGuard
-npm install
-npm start
-```
-
-Open `http://localhost:3000`
-
-### Environment variable (optional)
-
-Create a `.env` file in the root:
-
-```
-REACT_APP_API_URL=https://supplyguard-api-dp47.onrender.com
-```
-
----
-
 ## 📁 Project Structure
 
 ```
