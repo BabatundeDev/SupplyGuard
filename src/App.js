@@ -13,16 +13,15 @@ const post = (path, body) => fetch(`${BASE_URL}${path}`, {
 }).then(r => r.json());
 
 const api = {
-  allSuppliers:    ()                         => get("/risk/all-suppliers"),
-  alternates:      (name, material, risk)     => post("/risk/alternate-suppliers", {
+  allSuppliers:     ()                            => get("/risk/all-suppliers"),
+  alternates:       (name, material, risk)        => post("/risk/alternate-suppliers", {
     supplier_name: name, material, current_risk: risk, top_n: 3,
   }),
-  portfolioSummary: ()                        => get("/risk/portfolio-summary"),
-  forecast:        (material = "Semiconductors") => get(`/forecast/demand?material=${encodeURIComponent(material)}&weeks=12`),
-  alerts:          ()                         => get("/alerts/"),
+  portfolioSummary: ()                            => get("/risk/portfolio-summary"),
+  forecast:         (material = "Semiconductors") => get(`/forecast/demand?material=${encodeURIComponent(material)}&weeks=12`),
+  alerts:           ()                            => get("/alerts/"),
 };
 
-// ── Static risk history (computed from portfolio over time) ───────────────────
 const RISK_HISTORY = [
   { month:"Jan", score:48 }, { month:"Feb", score:52 }, { month:"Mar", score:61 },
   { month:"Apr", score:57 }, { month:"May", score:71 }, { month:"Jun", score:68 },
@@ -30,23 +29,33 @@ const RISK_HISTORY = [
   { month:"Oct", score:78 }, { month:"Nov", score:85 }, { month:"Dec", score:79 },
 ];
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
 const riskColor = r => r >= 70 ? "#FF4D4D" : r >= 40 ? "#F5A623" : "#2ECC9A";
-const riskLabel = r => r >= 70 ? "Critical"  : r >= 40 ? "Medium"   : "Low";
+const riskLabel = r => r >= 70 ? "Critical" : r >= 40 ? "Medium" : "Low";
 const sevColor  = { critical:"#FF4D4D", high:"#F5A623", medium:"#3B9EFF", low:"#2ECC9A" };
+
+// ── useIsMobile hook ──────────────────────────────────────────────────────────
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  useEffect(() => {
+    const handler = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener("resize", handler);
+    return () => window.removeEventListener("resize", handler);
+  }, []);
+  return isMobile;
+}
 
 // ── Reusable components ───────────────────────────────────────────────────────
 const KpiCard = ({ label, value, sub, accent }) => (
   <div style={{
     background:"rgba(255,255,255,0.03)", border:"1px solid rgba(255,255,255,0.08)",
-    borderRadius:14, padding:"18px 22px", flex:1, minWidth:140,
+    borderRadius:14, padding:"16px 18px", flex:1, minWidth:130,
     borderTop:`3px solid ${accent}`,
   }}>
-    <div style={{ fontSize:11, letterSpacing:"0.1em", textTransform:"uppercase",
-      color:"rgba(255,255,255,0.45)", marginBottom:8 }}>{label}</div>
-    <div style={{ fontSize:28, fontWeight:700, color:"#fff",
+    <div style={{ fontSize:10, letterSpacing:"0.1em", textTransform:"uppercase",
+      color:"rgba(255,255,255,0.45)", marginBottom:6 }}>{label}</div>
+    <div style={{ fontSize:26, fontWeight:700, color:"#fff",
       fontFamily:"'Space Grotesk',sans-serif", lineHeight:1 }}>{value}</div>
-    <div style={{ fontSize:12, color:"rgba(255,255,255,0.4)", marginTop:5 }}>{sub}</div>
+    <div style={{ fontSize:11, color:"rgba(255,255,255,0.4)", marginTop:4 }}>{sub}</div>
   </div>
 );
 
@@ -85,7 +94,7 @@ const CustomTooltip = ({ active, payload, label }) => {
 
 const Spinner = () => (
   <div style={{ display:"flex", alignItems:"center", justifyContent:"center",
-    height:160, color:"rgba(255,255,255,0.25)", fontSize:13, gap:10 }}>
+    height:140, color:"rgba(255,255,255,0.25)", fontSize:13, gap:10 }}>
     <div style={{
       width:18, height:18, border:"2px solid rgba(255,255,255,0.1)",
       borderTop:"2px solid #3B9EFF", borderRadius:"50%",
@@ -100,29 +109,32 @@ const ErrorBanner = ({ msg, onRetry }) => (
   <div style={{
     background:"rgba(255,77,77,0.08)", border:"1px solid rgba(255,77,77,0.25)",
     borderRadius:10, padding:"12px 16px", fontSize:13, color:"#FF4D4D",
-    display:"flex", alignItems:"center", justifyContent:"space-between",
+    display:"flex", alignItems:"center", justifyContent:"space-between", gap:10,
   }}>
     <span>⚠ {msg}</span>
     <button onClick={onRetry} style={{
       background:"rgba(255,77,77,0.15)", border:"1px solid rgba(255,77,77,0.3)",
-      color:"#FF4D4D", borderRadius:6, padding:"4px 12px", fontSize:12, cursor:"pointer",
+      color:"#FF4D4D", borderRadius:6, padding:"4px 12px", fontSize:12,
+      cursor:"pointer", flexShrink:0,
     }}>Retry</button>
   </div>
 );
 
 // ── Main Dashboard ────────────────────────────────────────────────────────────
 export default function SupplyGuardAI() {
-  const [tab,        setTab]        = useState("overview");
-  const [matFilter,  setMat]        = useState("All");
-  const [sortCol,    setSort]       = useState("risk_score");
-  const [sortDir,    setSortDir]    = useState(-1);
-  const [altModal,   setAlt]        = useState(null);
-  const [altData,    setAltData]    = useState(null);
-  const [altLoading, setAltLoading] = useState(false);
-  const [pulse,      setPulse]      = useState(0);
-  const [dismissed,  setDismissed]  = useState([]);
+  const isMobile = useIsMobile();
 
-  // API state
+  const [tab,          setTab]        = useState("overview");
+  const [sidebarOpen,  setSidebar]    = useState(false);
+  const [matFilter,    setMat]        = useState("All");
+  const [sortCol,      setSort]       = useState("risk_score");
+  const [sortDir,      setSortDir]    = useState(-1);
+  const [altModal,     setAlt]        = useState(null);
+  const [altData,      setAltData]    = useState(null);
+  const [altLoading,   setAltLoading] = useState(false);
+  const [pulse,        setPulse]      = useState(0);
+  const [dismissed,    setDismissed]  = useState([]);
+
   const [suppliers,  setSuppliers]  = useState([]);
   const [portfolio,  setPortfolio]  = useState(null);
   const [forecast,   setForecast]   = useState([]);
@@ -132,18 +144,14 @@ export default function SupplyGuardAI() {
   const [loading,    setLoading]    = useState({ suppliers:true, forecast:true, alerts:true });
   const [errors,     setErrors]     = useState({});
 
-  const setErr = (key, msg) => setErrors(e => ({ ...e, [key]: msg }));
-  const clearErr = (key)    => setErrors(e => ({ ...e, [key]: null }));
+  const setErr   = (key, msg) => setErrors(e => ({ ...e, [key]: msg }));
+  const clearErr = (key)      => setErrors(e => ({ ...e, [key]: null }));
 
-  // ── Fetch suppliers + portfolio ──
   const fetchSuppliers = useCallback(async () => {
     setLoading(l => ({ ...l, suppliers:true }));
     clearErr("suppliers");
     try {
-      const [supRes, portRes] = await Promise.all([
-        api.allSuppliers(),
-        api.portfolioSummary(),
-      ]);
+      const [supRes, portRes] = await Promise.all([api.allSuppliers(), api.portfolioSummary()]);
       setSuppliers(supRes.suppliers || []);
       setPortfolio({ ...supRes, materials: portRes.materials });
     } catch {
@@ -153,7 +161,6 @@ export default function SupplyGuardAI() {
     }
   }, []);
 
-  // ── Fetch forecast ──
   const fetchForecast = useCallback(async (material = "Semiconductors") => {
     setLoading(l => ({ ...l, forecast:true }));
     clearErr("forecast");
@@ -168,7 +175,6 @@ export default function SupplyGuardAI() {
     }
   }, []);
 
-  // ── Fetch alerts ──
   const fetchAlerts = useCallback(async () => {
     setLoading(l => ({ ...l, alerts:true }));
     clearErr("alerts");
@@ -188,12 +194,10 @@ export default function SupplyGuardAI() {
     fetchForecast();
     fetchAlerts();
     const t = setInterval(() => setPulse(p => p + 1), 1200);
-    // Auto-refresh alerts every 60s
     const alertTimer = setInterval(fetchAlerts, 60000);
     return () => { clearInterval(t); clearInterval(alertTimer); };
   }, [fetchSuppliers, fetchForecast, fetchAlerts]);
 
-  // ── Open alternate modal with live API call ──
   const openAltModal = async (supplier) => {
     setAlt(supplier);
     setAltData(null);
@@ -206,6 +210,11 @@ export default function SupplyGuardAI() {
     } finally {
       setAltLoading(false);
     }
+  };
+
+  const navigateTo = (id) => {
+    setTab(id);
+    setSidebar(false);
   };
 
   const materials = ["All", "Semiconductors", "Battery Metals", "Steel"];
@@ -223,38 +232,21 @@ export default function SupplyGuardAI() {
     else { setSort(col); setSortDir(-1); }
   };
 
-  // ── Styles ────────────────────────────────────────────────────────────────
-  const S = {
-    root: { fontFamily:"'DM Sans','Segoe UI',sans-serif", background:"#070B14",
-      minHeight:"100vh", color:"#fff" },
-    sidebar: { width:220, background:"rgba(255,255,255,0.02)",
-      borderRight:"1px solid rgba(255,255,255,0.07)",
-      display:"flex", flexDirection:"column", padding:"24px 0", gap:2, flexShrink:0 },
-    navItem: (active) => ({
-      display:"flex", alignItems:"center", gap:10, padding:"10px 20px",
-      fontSize:13, fontWeight: active ? 600 : 400,
-      color: active ? "#3B9EFF" : "rgba(255,255,255,0.5)",
-      background: active ? "rgba(59,158,255,0.08)" : "transparent",
-      borderLeft: active ? "2px solid #3B9EFF" : "2px solid transparent",
-      cursor:"pointer", transition:"all .15s", borderRadius:"0 8px 8px 0", userSelect:"none",
-    }),
-    content: { flex:1, overflow:"auto", padding:"28px 32px" },
-    sectionTitle: { fontSize:18, fontWeight:700, color:"#fff",
-      letterSpacing:"-0.02em", marginBottom:4 },
-    card: { background:"rgba(255,255,255,0.03)",
-      border:"1px solid rgba(255,255,255,0.08)", borderRadius:16, padding:"20px 24px" },
-    th: { fontSize:11, letterSpacing:"0.08em", textTransform:"uppercase",
-      color:"rgba(255,255,255,0.35)", padding:"8px 12px", textAlign:"left",
-      cursor:"pointer", userSelect:"none" },
-    td: { padding:"10px 12px", fontSize:13, borderBottom:"1px solid rgba(255,255,255,0.04)" },
-    filterBtn: (active) => ({
-      padding:"5px 13px", borderRadius:6, fontSize:12, fontWeight:500,
-      background: active ? "rgba(59,158,255,0.15)" : "transparent",
-      color: active ? "#3B9EFF" : "rgba(255,255,255,0.4)",
-      border: active ? "1px solid rgba(59,158,255,0.3)" : "1px solid rgba(255,255,255,0.1)",
-      cursor:"pointer", transition:"all .15s",
-    }),
+  const HEADER_H = 57;
+
+  const card = {
+    background:"rgba(255,255,255,0.03)",
+    border:"1px solid rgba(255,255,255,0.08)",
+    borderRadius:16, padding:"20px 24px",
   };
+
+  const filterBtn = (active) => ({
+    padding:"5px 10px", borderRadius:6, fontSize:11, fontWeight:500,
+    background: active ? "rgba(59,158,255,0.15)" : "transparent",
+    color: active ? "#3B9EFF" : "rgba(255,255,255,0.4)",
+    border: active ? "1px solid rgba(59,158,255,0.3)" : "1px solid rgba(255,255,255,0.1)",
+    cursor:"pointer", transition:"all .15s", whiteSpace:"nowrap",
+  });
 
   const navItems = [
     { id:"overview",  label:"Overview" },
@@ -264,50 +256,106 @@ export default function SupplyGuardAI() {
   ];
 
   return (
-    <div style={S.root}>
+    <div style={{ fontFamily:"'DM Sans','Segoe UI',sans-serif", background:"#070B14",
+      minHeight:"100vh", color:"#fff" }}>
+
       {/* ── Header ── */}
       <div style={{
         display:"flex", alignItems:"center", justifyContent:"space-between",
-        padding:"14px 28px", borderBottom:"1px solid rgba(255,255,255,0.07)",
-        background:"rgba(255,255,255,0.01)", position:"sticky", top:0, zIndex:10,
+        padding: isMobile ? "12px 16px" : "14px 28px",
+        borderBottom:"1px solid rgba(255,255,255,0.07)",
+        background:"rgba(255,255,255,0.01)",
+        position:"sticky", top:0, zIndex:60, height: HEADER_H,
       }}>
+        {/* Left: hamburger (mobile) + logo */}
         <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+          {isMobile && (
+            <button onClick={() => setSidebar(o => !o)} style={{
+              background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.1)",
+              borderRadius:8, color:"#fff", fontSize:18, cursor:"pointer",
+              width:36, height:36, display:"flex", alignItems:"center", justifyContent:"center",
+              flexShrink:0,
+            }}>
+              {sidebarOpen ? "✕" : "☰"}
+            </button>
+          )}
           <div style={{ width:32, height:32, borderRadius:9,
             background:"linear-gradient(135deg,#3B9EFF,#0052CC)",
             display:"flex", alignItems:"center", justifyContent:"center",
-            fontSize:16, fontWeight:800 }}>S</div>
+            fontSize:16, fontWeight:800, flexShrink:0 }}>S</div>
           <span style={{ fontSize:16, fontWeight:700, letterSpacing:"-0.02em" }}>
             SupplyGuard <span style={{ color:"#3B9EFF" }}>AI</span>
           </span>
-          <span style={{ fontSize:11, color:"rgba(255,255,255,0.3)",
-            background:"rgba(255,255,255,0.05)", borderRadius:4, padding:"2px 7px",
-            letterSpacing:"0.05em" }}>LIVE API</span>
+          {!isMobile && (
+            <span style={{ fontSize:11, color:"rgba(255,255,255,0.3)",
+              background:"rgba(255,255,255,0.05)", borderRadius:4, padding:"2px 7px",
+              letterSpacing:"0.05em" }}>LIVE API</span>
+          )}
         </div>
-        <div style={{ display:"flex", alignItems:"center", gap:16 }}>
-          <span style={{ fontSize:12, color:"rgba(255,255,255,0.35)" }}>Material focus:</span>
-          <div style={{ display:"flex", gap:6 }}>
-            {materials.map(m => (
-              <button key={m} style={S.filterBtn(matFilter === m)}
-                onClick={() => { setMat(m); if (tab==="forecast" && m!=="All") fetchForecast(m); }}>
-                {m}
-              </button>
-            ))}
-          </div>
+
+        {/* Right: filters + live indicator */}
+        <div style={{ display:"flex", alignItems:"center", gap: isMobile ? 8 : 16 }}>
+          {!isMobile && (
+            <>
+              <span style={{ fontSize:12, color:"rgba(255,255,255,0.35)" }}>Material focus:</span>
+              <div style={{ display:"flex", gap:6 }}>
+                {materials.map(m => (
+                  <button key={m} style={filterBtn(matFilter === m)}
+                    onClick={() => { setMat(m); if (tab==="forecast" && m!=="All") fetchForecast(m); }}>
+                    {m}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
           <div style={{
-            width:8, height:8, borderRadius:"50%", background:"#2ECC9A",
+            width:8, height:8, borderRadius:"50%", background:"#2ECC9A", flexShrink:0,
             boxShadow:`0 0 ${pulse % 2 === 0 ? 8 : 4}px #2ECC9A`, transition:"box-shadow .4s",
           }}/>
           <span style={{ fontSize:12, color:"#2ECC9A" }}>Live</span>
         </div>
       </div>
 
-      <div style={{ display:"flex", height:"calc(100vh - 57px)" }}>
+      {/* ── Mobile overlay ── */}
+      {isMobile && sidebarOpen && (
+        <div onClick={() => setSidebar(false)} style={{
+          position:"fixed", inset:0, top: HEADER_H,
+          background:"rgba(0,0,0,0.6)", zIndex:49,
+        }}/>
+      )}
+
+      <div style={{ display:"flex", height:`calc(100vh - ${HEADER_H}px)` }}>
+
         {/* ── Sidebar ── */}
-        <div style={S.sidebar}>
-          <div style={{ padding:"0 20px 16px", fontSize:10, letterSpacing:"0.12em",
+        <div style={{
+          width:220, background:"rgba(7,11,20,0.98)",
+          borderRight:"1px solid rgba(255,255,255,0.07)",
+          display:"flex", flexDirection:"column", padding:"20px 0", gap:2,
+          flexShrink:0,
+          ...(isMobile ? {
+            position:"fixed", left: sidebarOpen ? 0 : -220,
+            top: HEADER_H, height:`calc(100vh - ${HEADER_H}px)`,
+            zIndex:50, transition:"left 0.28s cubic-bezier(0.4,0,0.2,1)",
+            boxShadow: sidebarOpen ? "4px 0 24px rgba(0,0,0,0.5)" : "none",
+          } : {
+            position:"relative",
+          }),
+        }}>
+          <div style={{ padding:"0 20px 12px", fontSize:10, letterSpacing:"0.12em",
             textTransform:"uppercase", color:"rgba(255,255,255,0.2)" }}>Navigation</div>
+
           {navItems.map(n => (
-            <div key={n.id} style={S.navItem(tab === n.id)} onClick={() => setTab(n.id)}>
+            <div key={n.id}
+              onClick={() => navigateTo(n.id)}
+              style={{
+                display:"flex", alignItems:"center", gap:10, padding:"11px 20px",
+                fontSize:13, fontWeight: tab === n.id ? 600 : 400,
+                color: tab === n.id ? "#3B9EFF" : "rgba(255,255,255,0.5)",
+                background: tab === n.id ? "rgba(59,158,255,0.08)" : "transparent",
+                borderLeft: tab === n.id ? "2px solid #3B9EFF" : "2px solid transparent",
+                cursor:"pointer", transition:"all .15s",
+                borderRadius:"0 8px 8px 0", userSelect:"none",
+              }}>
               {n.label}
               {n.id === "alerts" && (alertMeta?.critical || 0) > 0 && (
                 <span style={{ marginLeft:"auto", background:"#FF4D4D", color:"#fff",
@@ -316,6 +364,26 @@ export default function SupplyGuardAI() {
               )}
             </div>
           ))}
+
+          {/* Mobile material filter inside sidebar */}
+          {isMobile && (
+            <div style={{ padding:"16px 20px 0", borderTop:"1px solid rgba(255,255,255,0.06)", marginTop:8 }}>
+              <div style={{ fontSize:10, letterSpacing:"0.1em", textTransform:"uppercase",
+                color:"rgba(255,255,255,0.2)", marginBottom:10 }}>Material Focus</div>
+              <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+                {materials.map(m => (
+                  <button key={m} style={{
+                    ...filterBtn(matFilter === m),
+                    textAlign:"left", width:"100%", padding:"7px 10px",
+                  }}
+                    onClick={() => { setMat(m); if (tab==="forecast" && m!=="All") fetchForecast(m); }}>
+                    {m}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div style={{ marginTop:"auto", padding:"16px 20px",
             borderTop:"1px solid rgba(255,255,255,0.06)" }}>
             <div style={{ fontSize:11, color:"rgba(255,255,255,0.25)", marginBottom:6 }}>
@@ -331,14 +399,18 @@ export default function SupplyGuardAI() {
           </div>
         </div>
 
-        {/* ── Content ── */}
-        <div style={S.content}>
+        {/* ── Main content ── */}
+        <div style={{
+          flex:1, overflow:"auto",
+          padding: isMobile ? "20px 16px" : "28px 32px",
+        }}>
 
           {/* ══ OVERVIEW ══ */}
           {tab === "overview" && (
             <div style={{ display:"flex", flexDirection:"column", gap:20 }}>
               <div>
-                <div style={S.sectionTitle}>Supply Chain Overview</div>
+                <div style={{ fontSize:18, fontWeight:700, color:"#fff",
+                  letterSpacing:"-0.02em", marginBottom:4 }}>Supply Chain Overview</div>
                 <div style={{ fontSize:13, color:"rgba(255,255,255,0.35)" }}>
                   Real-time risk intelligence · {suppliers.length} suppliers tracked
                 </div>
@@ -346,8 +418,7 @@ export default function SupplyGuardAI() {
 
               {errors.suppliers && <ErrorBanner msg={errors.suppliers} onRetry={fetchSuppliers}/>}
 
-              {/* KPI row */}
-              <div style={{ display:"flex", gap:12, flexWrap:"wrap" }}>
+              <div style={{ display:"flex", gap:10, flexWrap:"wrap" }}>
                 <KpiCard label="Active Suppliers" value={loading.suppliers ? "—" : suppliers.length}
                   sub="Across global regions" accent="#3B9EFF"/>
                 <KpiCard label="High Risk" value={loading.alerts ? "—" : criticalCount}
@@ -356,12 +427,12 @@ export default function SupplyGuardAI() {
                   sub="AI-predicted portfolio avg" accent={riskColor(avgRisk)}/>
                 <KpiCard label="Alternates Ready"
                   value={loading.suppliers ? "—" : suppliers.filter(s => s.risk_score >= 60).length}
-                  sub="High-risk suppliers with alternates" accent="#2ECC9A"/>
+                  sub="High-risk suppliers" accent="#2ECC9A"/>
               </div>
 
-              {/* Charts row */}
-              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16 }}>
-                <div style={S.card}>
+              <div style={{ display:"grid",
+                gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap:16 }}>
+                <div style={card}>
                   <div style={{ fontSize:13, fontWeight:600, marginBottom:16,
                     color:"rgba(255,255,255,0.8)" }}>Portfolio Risk Score — 12 months</div>
                   <ResponsiveContainer width="100%" height={180}>
@@ -384,35 +455,34 @@ export default function SupplyGuardAI() {
                   </ResponsiveContainer>
                 </div>
 
-                <div style={S.card}>
+                <div style={card}>
                   <div style={{ fontSize:13, fontWeight:600, marginBottom:16,
-                    color:"rgba(255,255,255,0.8)" }}>Risk by Material Category
+                    color:"rgba(255,255,255,0.8)" }}>
+                    Risk by Material Category
                     <span style={{ fontSize:11, color:"#2ECC9A", marginLeft:8 }}>AI model</span>
                   </div>
-                  {loading.suppliers
-                    ? <Spinner/>
-                    : <ResponsiveContainer width="100%" height={180}>
-                        <BarChart
-                          data={portfolio?.materials?.map(m => ({ name: m.material, risk: m.avg_risk })) || []}
-                          layout="vertical" barSize={10}>
-                          <CartesianGrid strokeDasharray="2 4" stroke="rgba(255,255,255,0.06)" horizontal={false}/>
-                          <XAxis type="number" tick={{ fontSize:10, fill:"rgba(255,255,255,0.35)" }}
-                            axisLine={false} tickLine={false} domain={[0,100]}/>
-                          <YAxis type="category" dataKey="name"
-                            tick={{ fontSize:11, fill:"rgba(255,255,255,0.5)" }}
-                            axisLine={false} tickLine={false} width={100}/>
-                          <Tooltip content={<CustomTooltip/>}/>
-                          <Bar dataKey="risk" name="Risk score" radius={[0,5,5,0]} fill="#3B9EFF"/>
-                        </BarChart>
-                      </ResponsiveContainer>
-                  }
+                  {loading.suppliers ? <Spinner/> : (
+                    <ResponsiveContainer width="100%" height={180}>
+                      <BarChart
+                        data={portfolio?.materials?.map(m => ({ name: m.material, risk: m.avg_risk })) || []}
+                        layout="vertical" barSize={10}>
+                        <CartesianGrid strokeDasharray="2 4" stroke="rgba(255,255,255,0.06)" horizontal={false}/>
+                        <XAxis type="number" tick={{ fontSize:10, fill:"rgba(255,255,255,0.35)" }}
+                          axisLine={false} tickLine={false} domain={[0,100]}/>
+                        <YAxis type="category" dataKey="name"
+                          tick={{ fontSize: isMobile ? 9 : 11, fill:"rgba(255,255,255,0.5)" }}
+                          axisLine={false} tickLine={false} width={isMobile ? 80 : 100}/>
+                        <Tooltip content={<CustomTooltip/>}/>
+                        <Bar dataKey="risk" name="Risk score" radius={[0,5,5,0]} fill="#3B9EFF"/>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  )}
                 </div>
               </div>
 
-              {/* Recent alerts preview */}
-              <div style={S.card}>
+              <div style={card}>
                 <div style={{ display:"flex", justifyContent:"space-between",
-                  alignItems:"center", marginBottom:14 }}>
+                  alignItems:"center", marginBottom:14, flexWrap:"wrap", gap:8 }}>
                   <div style={{ fontSize:13, fontWeight:600, color:"rgba(255,255,255,0.8)" }}>
                     Recent Alerts
                     {alertMeta && (
@@ -423,23 +493,20 @@ export default function SupplyGuardAI() {
                   </div>
                   <button style={{ background:"transparent", border:"1px solid rgba(255,255,255,0.1)",
                     color:"rgba(255,255,255,0.4)", borderRadius:7, padding:"5px 12px",
-                    fontSize:12, cursor:"pointer" }} onClick={() => setTab("alerts")}>
+                    fontSize:12, cursor:"pointer" }} onClick={() => navigateTo("alerts")}>
                     View all →
                   </button>
                 </div>
-                {loading.alerts
-                  ? <Spinner/>
-                  : alerts.slice(0, 3).map(a => (
-                    <div key={a.id} style={{ display:"flex", alignItems:"center", gap:12,
-                      padding:"9px 0", borderBottom:"1px solid rgba(255,255,255,0.05)" }}>
-                      <div style={{ width:7, height:7, borderRadius:"50%",
-                        background:sevColor[a.severity], flexShrink:0,
-                        boxShadow:`0 0 6px ${sevColor[a.severity]}` }}/>
-                      <div style={{ flex:1, fontSize:13, color:"rgba(255,255,255,0.75)" }}>{a.message}</div>
-                      <div style={{ fontSize:11, color:"rgba(255,255,255,0.3)" }}>{a.time_ago}</div>
-                    </div>
-                  ))
-                }
+                {loading.alerts ? <Spinner/> : alerts.slice(0, 3).map(a => (
+                  <div key={a.id} style={{ display:"flex", alignItems:"flex-start", gap:12,
+                    padding:"9px 0", borderBottom:"1px solid rgba(255,255,255,0.05)" }}>
+                    <div style={{ width:7, height:7, borderRadius:"50%", marginTop:4,
+                      background:sevColor[a.severity], flexShrink:0,
+                      boxShadow:`0 0 6px ${sevColor[a.severity]}` }}/>
+                    <div style={{ flex:1, fontSize:13, color:"rgba(255,255,255,0.75)" }}>{a.message}</div>
+                    <div style={{ fontSize:11, color:"rgba(255,255,255,0.3)", flexShrink:0 }}>{a.time_ago}</div>
+                  </div>
+                ))}
               </div>
             </div>
           )}
@@ -448,144 +515,157 @@ export default function SupplyGuardAI() {
           {tab === "suppliers" && (
             <div style={{ display:"flex", flexDirection:"column", gap:20 }}>
               <div>
-                <div style={S.sectionTitle}>Supplier Intelligence</div>
+                <div style={{ fontSize:18, fontWeight:700, color:"#fff",
+                  letterSpacing:"-0.02em", marginBottom:4 }}>Supplier Intelligence</div>
                 <div style={{ fontSize:13, color:"rgba(255,255,255,0.35)" }}>
-                  {filtered.length} suppliers · AI risk scores · sorted by {sortCol}
+                  {filtered.length} suppliers · AI risk scores
                 </div>
               </div>
               {errors.suppliers && <ErrorBanner msg={errors.suppliers} onRetry={fetchSuppliers}/>}
-              {loading.suppliers
-                ? <Spinner/>
-                : <div style={{ ...S.card, padding:0, overflow:"hidden" }}>
-                    <table style={{ width:"100%", borderCollapse:"collapse" }}>
-                      <thead>
-                        <tr style={{ borderBottom:"1px solid rgba(255,255,255,0.07)" }}>
-                          {[
-                            ["name","Supplier"], ["country","Country"], ["material","Material"],
-                            ["risk_score","Risk score"], ["lead_time","Lead time"],
-                            ["rating","Rating"], ["geo_score","Geo risk"],
-                          ].map(([col, label]) => (
-                            <th key={col} style={S.th} onClick={() => handleSort(col)}>
-                              {label} {sortCol === col ? (sortDir === -1 ? "↓" : "↑") : ""}
-                            </th>
-                          ))}
-                          <th style={S.th}>Alternate</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {filtered.map((s, i) => (
-                          <tr key={i}
-                            onMouseEnter={e => e.currentTarget.style.background="rgba(255,255,255,0.03)"}
-                            onMouseLeave={e => e.currentTarget.style.background="transparent"}>
-                            <td style={S.td}>
-                              <div style={{ fontWeight:600, fontSize:13 }}>{s.name}</div>
-                            </td>
-                            <td style={{ ...S.td, color:"rgba(255,255,255,0.5)" }}>{s.country}</td>
-                            <td style={S.td}>
-                              <span style={{ fontSize:11, padding:"2px 8px", borderRadius:5,
-                                background:"rgba(59,158,255,0.1)", color:"#3B9EFF" }}>
-                                {s.material}
-                              </span>
-                            </td>
-                            <td style={S.td}>
-                              <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
-                                <RiskBadge score={s.risk_score}/>
-                                <RiskBar score={Math.round(s.risk_score)}/>
-                              </div>
-                            </td>
-                            <td style={{ ...S.td, color:"rgba(255,255,255,0.7)" }}>{s.lead_time}d</td>
-                            <td style={S.td}>
-                              <span style={{ color:"#F5A623", fontWeight:600 }}>
-                                {"★".repeat(Math.floor(s.rating))}
-                                <span style={{ color:"rgba(255,255,255,0.2)" }}>
-                                  {"★".repeat(5 - Math.floor(s.rating))}
-                                </span>
-                              </span>
-                              <span style={{ fontSize:11, color:"rgba(255,255,255,0.4)", marginLeft:4 }}>
-                                {s.rating}
-                              </span>
-                            </td>
-                            <td style={S.td}>
-                              <span style={{ color:riskColor(s.geo_score), fontSize:12, fontWeight:600 }}>
-                                {Math.round(s.geo_score)}
-                              </span>
-                            </td>
-                            <td style={S.td}>
-                              {s.risk_score >= 40
-                                ? <button onClick={() => openAltModal(s)} style={{
-                                    background:"rgba(46,204,154,0.1)", color:"#2ECC9A",
-                                    border:"1px solid rgba(46,204,154,0.3)", borderRadius:6,
-                                    padding:"4px 10px", fontSize:11, fontWeight:600, cursor:"pointer",
-                                  }}>Find alternate</button>
-                                : <span style={{ fontSize:11, color:"rgba(255,255,255,0.2)" }}>Low risk</span>
-                              }
-                            </td>
-                          </tr>
+              {loading.suppliers ? <Spinner/> : (
+                <div style={{ ...card, padding:0, overflow:"hidden", overflowX:"auto" }}>
+                  <table style={{ width:"100%", borderCollapse:"collapse", minWidth: isMobile ? 600 : "auto" }}>
+                    <thead>
+                      <tr style={{ borderBottom:"1px solid rgba(255,255,255,0.07)" }}>
+                        {[
+                          ["name","Supplier"], ["country","Country"], ["material","Material"],
+                          ["risk_score","Risk"], ["lead_time","Lead"],
+                          ["rating","Rating"], ["geo_score","Geo"],
+                        ].map(([col, label]) => (
+                          <th key={col}
+                            onClick={() => handleSort(col)}
+                            style={{ fontSize:10, letterSpacing:"0.08em", textTransform:"uppercase",
+                              color:"rgba(255,255,255,0.35)", padding:"8px 10px", textAlign:"left",
+                              cursor:"pointer", userSelect:"none", whiteSpace:"nowrap" }}>
+                            {label} {sortCol === col ? (sortDir === -1 ? "↓" : "↑") : ""}
+                          </th>
                         ))}
-                      </tbody>
-                    </table>
-                  </div>
-              }
+                        <th style={{ fontSize:10, letterSpacing:"0.08em", textTransform:"uppercase",
+                          color:"rgba(255,255,255,0.35)", padding:"8px 10px", textAlign:"left" }}>
+                          Action
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filtered.map((s, i) => (
+                        <tr key={i}
+                          onMouseEnter={e => e.currentTarget.style.background="rgba(255,255,255,0.03)"}
+                          onMouseLeave={e => e.currentTarget.style.background="transparent"}>
+                          <td style={{ padding:"10px", fontSize:13, borderBottom:"1px solid rgba(255,255,255,0.04)" }}>
+                            <div style={{ fontWeight:600, fontSize:12 }}>{s.name}</div>
+                          </td>
+                          <td style={{ padding:"10px", fontSize:12, color:"rgba(255,255,255,0.5)",
+                            borderBottom:"1px solid rgba(255,255,255,0.04)", whiteSpace:"nowrap" }}>
+                            {s.country}
+                          </td>
+                          <td style={{ padding:"10px", borderBottom:"1px solid rgba(255,255,255,0.04)" }}>
+                            <span style={{ fontSize:10, padding:"2px 6px", borderRadius:5,
+                              background:"rgba(59,158,255,0.1)", color:"#3B9EFF", whiteSpace:"nowrap" }}>
+                              {s.material}
+                            </span>
+                          </td>
+                          <td style={{ padding:"10px", borderBottom:"1px solid rgba(255,255,255,0.04)" }}>
+                            <div style={{ display:"flex", flexDirection:"column", gap:3 }}>
+                              <RiskBadge score={s.risk_score}/>
+                              <RiskBar score={Math.round(s.risk_score)}/>
+                            </div>
+                          </td>
+                          <td style={{ padding:"10px", fontSize:12, color:"rgba(255,255,255,0.7)",
+                            borderBottom:"1px solid rgba(255,255,255,0.04)", whiteSpace:"nowrap" }}>
+                            {s.lead_time}d
+                          </td>
+                          <td style={{ padding:"10px", borderBottom:"1px solid rgba(255,255,255,0.04)" }}>
+                            <span style={{ color:"#F5A623", fontWeight:600, fontSize:12 }}>
+                              {"★".repeat(Math.floor(s.rating))}
+                              <span style={{ color:"rgba(255,255,255,0.2)" }}>
+                                {"★".repeat(5 - Math.floor(s.rating))}
+                              </span>
+                            </span>
+                          </td>
+                          <td style={{ padding:"10px", borderBottom:"1px solid rgba(255,255,255,0.04)" }}>
+                            <span style={{ color:riskColor(s.geo_score), fontSize:12, fontWeight:600 }}>
+                              {Math.round(s.geo_score)}
+                            </span>
+                          </td>
+                          <td style={{ padding:"10px", borderBottom:"1px solid rgba(255,255,255,0.04)" }}>
+                            {s.risk_score >= 40
+                              ? <button onClick={() => openAltModal(s)} style={{
+                                  background:"rgba(46,204,154,0.1)", color:"#2ECC9A",
+                                  border:"1px solid rgba(46,204,154,0.3)", borderRadius:6,
+                                  padding:"4px 8px", fontSize:10, fontWeight:600,
+                                  cursor:"pointer", whiteSpace:"nowrap",
+                                }}>Find alt</button>
+                              : <span style={{ fontSize:10, color:"rgba(255,255,255,0.2)" }}>Low risk</span>
+                            }
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           )}
 
           {/* ══ FORECAST ══ */}
           {tab === "forecast" && (
             <div style={{ display:"flex", flexDirection:"column", gap:20 }}>
-              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-end" }}>
+              <div style={{ display:"flex", justifyContent:"space-between",
+                alignItems:"flex-start", flexWrap:"wrap", gap:12 }}>
                 <div>
-                  <div style={S.sectionTitle}>Demand Forecast</div>
+                  <div style={{ fontSize:18, fontWeight:700, color:"#fff",
+                    letterSpacing:"-0.02em", marginBottom:4 }}>Demand Forecast</div>
                   <div style={{ fontSize:13, color:"rgba(255,255,255,0.35)" }}>
-                    Prophet AI model · 12-week projection · 80% confidence band
+                    AI model · 12-week projection · 80% confidence band
                   </div>
                 </div>
-                <div style={{ display:"flex", gap:6 }}>
+                <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
                   {["Semiconductors","Battery Metals","Steel"].map(m => (
-                    <button key={m} style={S.filterBtn(matFilter === m)}
+                    <button key={m} style={filterBtn(matFilter === m)}
                       onClick={() => { setMat(m); fetchForecast(m); }}>{m}</button>
                   ))}
                 </div>
               </div>
               {errors.forecast && <ErrorBanner msg={errors.forecast} onRetry={() => fetchForecast(matFilter)}/>}
-              <div style={S.card}>
+              <div style={card}>
                 <div style={{ fontSize:13, fontWeight:600, marginBottom:20,
                   color:"rgba(255,255,255,0.8)" }}>
                   Units required · {matFilter === "All" ? "Semiconductors" : matFilter}
                   <span style={{ fontSize:11, color:"#2ECC9A", marginLeft:8 }}>Prophet model</span>
                 </div>
-                {loading.forecast
-                  ? <Spinner/>
-                  : <ResponsiveContainer width="100%" height={280}>
-                      <AreaChart data={forecast} margin={{ top:5, right:10, bottom:0, left:0 }}>
-                        <defs>
-                          <linearGradient id="dg" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%"  stopColor="#3B9EFF" stopOpacity={0.3}/>
-                            <stop offset="95%" stopColor="#3B9EFF" stopOpacity={0}/>
-                          </linearGradient>
-                          <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%"  stopColor="#2ECC9A" stopOpacity={0.08}/>
-                            <stop offset="100%" stopColor="#2ECC9A" stopOpacity={0.02}/>
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="2 6" stroke="rgba(255,255,255,0.06)"/>
-                        <XAxis dataKey="week" tick={{ fontSize:11, fill:"rgba(255,255,255,0.35)" }}
-                          axisLine={false} tickLine={false}/>
-                        <YAxis tick={{ fontSize:11, fill:"rgba(255,255,255,0.35)" }}
-                          axisLine={false} tickLine={false}/>
-                        <Tooltip content={<CustomTooltip/>}/>
-                        <Area type="monotone" dataKey="upper" name="Upper bound"
-                          stroke="none" fill="url(#bg)" fillOpacity={1}/>
-                        <Area type="monotone" dataKey="lower" name="Lower bound"
-                          stroke="none" fill="#070B14" fillOpacity={1}/>
-                        <Area type="monotone" dataKey="demand" name="Demand forecast"
-                          stroke="#3B9EFF" strokeWidth={2.5} fill="url(#dg)"/>
-                      </AreaChart>
-                    </ResponsiveContainer>
-                }
+                {loading.forecast ? <Spinner/> : (
+                  <ResponsiveContainer width="100%" height={isMobile ? 220 : 280}>
+                    <AreaChart data={forecast} margin={{ top:5, right:10, bottom:0, left:0 }}>
+                      <defs>
+                        <linearGradient id="dg" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%"  stopColor="#3B9EFF" stopOpacity={0.3}/>
+                          <stop offset="95%" stopColor="#3B9EFF" stopOpacity={0}/>
+                        </linearGradient>
+                        <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%"  stopColor="#2ECC9A" stopOpacity={0.08}/>
+                          <stop offset="100%" stopColor="#2ECC9A" stopOpacity={0.02}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="2 6" stroke="rgba(255,255,255,0.06)"/>
+                      <XAxis dataKey="week" tick={{ fontSize:10, fill:"rgba(255,255,255,0.35)" }}
+                        axisLine={false} tickLine={false}/>
+                      <YAxis tick={{ fontSize:10, fill:"rgba(255,255,255,0.35)" }}
+                        axisLine={false} tickLine={false}/>
+                      <Tooltip content={<CustomTooltip/>}/>
+                      <Area type="monotone" dataKey="upper" name="Upper bound"
+                        stroke="none" fill="url(#bg)" fillOpacity={1}/>
+                      <Area type="monotone" dataKey="lower" name="Lower bound"
+                        stroke="none" fill="#070B14" fillOpacity={1}/>
+                      <Area type="monotone" dataKey="demand" name="Demand forecast"
+                        stroke="#3B9EFF" strokeWidth={2.5} fill="url(#dg)"/>
+                    </AreaChart>
+                  </ResponsiveContainer>
+                )}
               </div>
 
               {fcInsights && (
-                <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:12 }}>
+                <div style={{ display:"grid",
+                  gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(3,1fr)", gap:12 }}>
                   {[
                     { label:"Peak demand week", value:fcInsights.peak_week,
                       sub:`${fcInsights.peak_demand} units projected`, color:"#FF4D4D" },
@@ -594,11 +674,11 @@ export default function SupplyGuardAI() {
                     { label:"Reorder recommended", value:fcInsights.reorder_recommended_week,
                       sub:`Trend: ${fcInsights.trend}`, color:"#2ECC9A" },
                   ].map(c => (
-                    <div key={c.label} style={{ ...S.card, borderTop:`3px solid ${c.color}` }}>
-                      <div style={{ fontSize:11, textTransform:"uppercase", letterSpacing:"0.08em",
+                    <div key={c.label} style={{ ...card, borderTop:`3px solid ${c.color}` }}>
+                      <div style={{ fontSize:10, textTransform:"uppercase", letterSpacing:"0.08em",
                         color:"rgba(255,255,255,0.35)", marginBottom:6 }}>{c.label}</div>
-                      <div style={{ fontSize:26, fontWeight:700, color:"#fff" }}>{c.value}</div>
-                      <div style={{ fontSize:12, color:"rgba(255,255,255,0.4)", marginTop:4 }}>{c.sub}</div>
+                      <div style={{ fontSize:22, fontWeight:700, color:"#fff" }}>{c.value}</div>
+                      <div style={{ fontSize:11, color:"rgba(255,255,255,0.4)", marginTop:4 }}>{c.sub}</div>
                     </div>
                   ))}
                 </div>
@@ -609,9 +689,11 @@ export default function SupplyGuardAI() {
           {/* ══ ALERTS ══ */}
           {tab === "alerts" && (
             <div style={{ display:"flex", flexDirection:"column", gap:20 }}>
-              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-end" }}>
+              <div style={{ display:"flex", justifyContent:"space-between",
+                alignItems:"flex-start", flexWrap:"wrap", gap:10 }}>
                 <div>
-                  <div style={S.sectionTitle}>Disruption Alerts</div>
+                  <div style={{ fontSize:18, fontWeight:700, color:"#fff",
+                    letterSpacing:"-0.02em", marginBottom:4 }}>Disruption Alerts</div>
                   <div style={{ fontSize:13, color:"rgba(255,255,255,0.35)" }}>
                     {activeAlerts.length} active · auto-refreshes every 60s
                   </div>
@@ -634,52 +716,52 @@ export default function SupplyGuardAI() {
                 </div>
               </div>
               {errors.alerts && <ErrorBanner msg={errors.alerts} onRetry={fetchAlerts}/>}
-              {loading.alerts
-                ? <Spinner/>
-                : <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
-                    {activeAlerts.map(a => (
-                      <div key={a.id} style={{
-                        ...S.card,
-                        borderLeft:`3px solid ${sevColor[a.severity]}`,
-                        display:"flex", alignItems:"flex-start", gap:16, padding:"16px 20px",
-                      }}>
-                        <div style={{ width:9, height:9, borderRadius:"50%",
-                          background:sevColor[a.severity], flexShrink:0, marginTop:4,
-                          boxShadow: a.severity==="critical" ? `0 0 10px ${sevColor[a.severity]}` : "none" }}/>
-                        <div style={{ flex:1 }}>
-                          <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:5 }}>
-                            <span style={{
-                              fontSize:10, fontWeight:700, letterSpacing:"0.08em",
-                              textTransform:"uppercase", color:sevColor[a.severity],
-                              background: sevColor[a.severity]+"22", padding:"2px 7px", borderRadius:4,
-                            }}>{a.severity}</span>
-                            <span style={{ fontSize:11, color:"rgba(255,255,255,0.25)" }}>{a.region}</span>
-                            {a.type === "supplier" && (
-                              <span style={{ fontSize:10, color:"rgba(59,158,255,0.7)",
-                                background:"rgba(59,158,255,0.1)", padding:"1px 6px", borderRadius:4 }}>
-                                AI detected
-                              </span>
-                            )}
-                          </div>
-                          <div style={{ fontSize:14, color:"rgba(255,255,255,0.85)", marginBottom:3 }}>
-                            {a.message}
-                          </div>
-                          <div style={{ fontSize:11, color:"rgba(255,255,255,0.3)" }}>{a.time_ago}</div>
+              {loading.alerts ? <Spinner/> : (
+                <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+                  {activeAlerts.map(a => (
+                    <div key={a.id} style={{
+                      ...card,
+                      borderLeft:`3px solid ${sevColor[a.severity]}`,
+                      display:"flex", alignItems:"flex-start", gap:12, padding:"14px 16px",
+                    }}>
+                      <div style={{ width:9, height:9, borderRadius:"50%", flexShrink:0, marginTop:4,
+                        background:sevColor[a.severity],
+                        boxShadow: a.severity==="critical" ? `0 0 10px ${sevColor[a.severity]}` : "none" }}/>
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <div style={{ display:"flex", alignItems:"center", gap:6,
+                          marginBottom:5, flexWrap:"wrap" }}>
+                          <span style={{
+                            fontSize:10, fontWeight:700, letterSpacing:"0.08em",
+                            textTransform:"uppercase", color:sevColor[a.severity],
+                            background: sevColor[a.severity]+"22", padding:"2px 7px", borderRadius:4,
+                          }}>{a.severity}</span>
+                          <span style={{ fontSize:11, color:"rgba(255,255,255,0.25)" }}>{a.region}</span>
+                          {a.type === "supplier" && (
+                            <span style={{ fontSize:10, color:"rgba(59,158,255,0.7)",
+                              background:"rgba(59,158,255,0.1)", padding:"1px 6px", borderRadius:4 }}>
+                              AI detected
+                            </span>
+                          )}
                         </div>
-                        <button onClick={() => setDismissed(d => [...d, a.id])} style={{
-                          background:"transparent", border:"none", color:"rgba(255,255,255,0.2)",
-                          fontSize:18, cursor:"pointer", lineHeight:1, padding:"0 4px", flexShrink:0,
-                        }}>×</button>
+                        <div style={{ fontSize:13, color:"rgba(255,255,255,0.85)", marginBottom:3 }}>
+                          {a.message}
+                        </div>
+                        <div style={{ fontSize:11, color:"rgba(255,255,255,0.3)" }}>{a.time_ago}</div>
                       </div>
-                    ))}
-                    {activeAlerts.length === 0 && (
-                      <div style={{ ...S.card, textAlign:"center", padding:"40px",
-                        color:"rgba(255,255,255,0.3)", fontSize:14 }}>
-                        All alerts dismissed ✓
-                      </div>
-                    )}
-                  </div>
-              }
+                      <button onClick={() => setDismissed(d => [...d, a.id])} style={{
+                        background:"transparent", border:"none", color:"rgba(255,255,255,0.2)",
+                        fontSize:18, cursor:"pointer", lineHeight:1, padding:"0 4px", flexShrink:0,
+                      }}>×</button>
+                    </div>
+                  ))}
+                  {activeAlerts.length === 0 && (
+                    <div style={{ ...card, textAlign:"center", padding:"40px",
+                      color:"rgba(255,255,255,0.3)", fontSize:14 }}>
+                      All alerts dismissed ✓
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -689,10 +771,12 @@ export default function SupplyGuardAI() {
       {altModal && (
         <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.7)",
           display:"flex", alignItems:"center", justifyContent:"center", zIndex:100,
-          backdropFilter:"blur(4px)" }} onClick={() => { setAlt(null); setAltData(null); }}>
+          backdropFilter:"blur(4px)", padding:16 }}
+          onClick={() => { setAlt(null); setAltData(null); }}>
           <div onClick={e => e.stopPropagation()} style={{
             background:"#0E1524", border:"1px solid rgba(255,255,255,0.12)",
-            borderRadius:20, padding:"28px 32px", width:440, maxWidth:"90vw",
+            borderRadius:20, padding:"24px", width:"100%", maxWidth:440,
+            maxHeight:"90vh", overflowY:"auto",
           }}>
             <div style={{ fontSize:11, textTransform:"uppercase", letterSpacing:"0.1em",
               color:"rgba(255,255,255,0.3)", marginBottom:8 }}>AI Alternate Sourcing Engine</div>
@@ -711,7 +795,8 @@ export default function SupplyGuardAI() {
               <div key={i} style={{ background:"rgba(46,204,154,0.06)",
                 border:"1px solid rgba(46,204,154,0.2)", borderRadius:12,
                 padding:"14px 16px", marginBottom:10 }}>
-                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                <div style={{ display:"flex", justifyContent:"space-between",
+                  alignItems:"center", flexWrap:"wrap", gap:8 }}>
                   <div>
                     <div style={{ fontWeight:600, fontSize:14 }}>{a.name}</div>
                     <div style={{ fontSize:12, color:"rgba(255,255,255,0.4)" }}>
@@ -720,8 +805,8 @@ export default function SupplyGuardAI() {
                   </div>
                   <RiskBadge score={a.risk_score}/>
                 </div>
-                <div style={{ display:"flex", gap:16, marginTop:10, fontSize:12,
-                  color:"rgba(255,255,255,0.5)" }}>
+                <div style={{ display:"flex", gap:12, marginTop:10, fontSize:12,
+                  color:"rgba(255,255,255,0.5)", flexWrap:"wrap" }}>
                   <span>Lead: <b style={{ color:"#fff" }}>{a.lead_time}d</b></span>
                   <span>Rating: <b style={{ color:"#F5A623" }}>{a.rating}★</b></span>
                   <span style={{ color: a.recommendation==="Strongly recommended" ? "#2ECC9A" : "#F5A623" }}>
