@@ -3,88 +3,133 @@ import {
   AreaChart, Area, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
+import {
+  Menu, X, Factory, AlertTriangle, BarChart2, RefreshCw,
+  ArrowRightLeft, TrendingUp, Package, Bell, CheckCircle2,
+  ChevronDown, ChevronUp, Zap, ShieldAlert, Shield, Activity,
+  LayoutDashboard, Truck, LineChart, AlertOctagon,
+} from "lucide-react";
 
-// ── API Layer ─────────────────────────────────────────────────────────────────
 const BASE_URL = "https://supplyguard-api-dp47.onrender.com";
-const get  = (path) => fetch(`${BASE_URL}${path}`).then(r => r.json());
+const get = (path) => fetch(`${BASE_URL}${path}`).then(r => r.json());
 const post = (path, body) => fetch(`${BASE_URL}${path}`, {
   method: "POST", headers: { "Content-Type": "application/json" },
   body: JSON.stringify(body),
 }).then(r => r.json());
 
 const api = {
-  allSuppliers:     ()                            => get("/risk/all-suppliers"),
-  alternates:       (name, material, risk)        => post("/risk/alternate-suppliers", {
+  allSuppliers: () => get("/risk/all-suppliers"),
+  alternates: (name, material, risk) => post("/risk/alternate-suppliers", {
     supplier_name: name, material, current_risk: risk, top_n: 3,
   }),
-  portfolioSummary: ()                            => get("/risk/portfolio-summary"),
-  forecast:         (material = "Semiconductors") => get(`/forecast/demand?material=${encodeURIComponent(material)}&weeks=12`),
-  alerts:           ()                            => get("/alerts/"),
+  portfolioSummary: () => get("/risk/portfolio-summary"),
+  forecast: (material = "Semiconductors") => get(`/forecast/demand?material=${encodeURIComponent(material)}&weeks=12`),
+  alerts: () => get("/alerts/"),
 };
 
 const RISK_HISTORY = [
-  { month:"Jan", score:48 }, { month:"Feb", score:52 }, { month:"Mar", score:61 },
-  { month:"Apr", score:57 }, { month:"May", score:71 }, { month:"Jun", score:68 },
-  { month:"Jul", score:75 }, { month:"Aug", score:69 }, { month:"Sep", score:82 },
-  { month:"Oct", score:78 }, { month:"Nov", score:85 }, { month:"Dec", score:79 },
+  { month: "Jan", score: 48 }, { month: "Feb", score: 52 }, { month: "Mar", score: 61 },
+  { month: "Apr", score: 57 }, { month: "May", score: 71 }, { month: "Jun", score: 68 },
+  { month: "Jul", score: 75 }, { month: "Aug", score: 69 }, { month: "Sep", score: 82 },
+  { month: "Oct", score: 78 }, { month: "Nov", score: 85 }, { month: "Dec", score: 79 },
 ];
 
-const riskColor = r => r >= 70 ? "#FF4D4D" : r >= 40 ? "#F5A623" : "#2ECC9A";
-const riskLabel = r => r >= 70 ? "Critical" : r >= 40 ? "Medium" : "Low";
-const sevColor  = { critical:"#FF4D4D", high:"#F5A623", medium:"#3B9EFF", low:"#2ECC9A" };
+// ── Design tokens ─────────────────────────────────────────────────────────────
+const T = {
+  bg: "#F7F8FA",
+  surface: "#FFFFFF",
+  border: "#E8EAED",
+  borderMid: "#D1D5DB",
+  text: "#111827",
+  textSub: "#6B7280",
+  textMuted: "#9CA3AF",
+  blue: "#2563EB",
+  blueLight: "#EFF6FF",
+  blueMid: "#BFDBFE",
+  red: "#DC2626",
+  redLight: "#FEF2F2",
+  green: "#059669",
+  greenLight: "#ECFDF5",
+  amber: "#D97706",
+  amberLight: "#FFFBEB",
+  radius: 12,
+};
 
-// ── useIsMobile hook ──────────────────────────────────────────────────────────
+const riskColor = r => r >= 70 ? T.red : r >= 40 ? T.amber : T.green;
+const riskBg = r => r >= 70 ? T.redLight : r >= 40 ? T.amberLight : T.greenLight;
+const riskLabel = r => r >= 70 ? "Critical" : r >= 40 ? "Medium" : "Low";
+const sevColor = { critical: T.red, high: T.amber, medium: T.blue, low: T.green };
+const sevBg = { critical: T.redLight, high: T.amberLight, medium: T.blueLight, low: T.greenLight };
+const sevIcon = { critical: AlertOctagon, high: AlertTriangle, medium: Zap, low: CheckCircle2 };
+
 function useIsMobile() {
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [m, setM] = useState(window.innerWidth < 768);
   useEffect(() => {
-    const handler = () => setIsMobile(window.innerWidth < 768);
-    window.addEventListener("resize", handler);
-    return () => window.removeEventListener("resize", handler);
+    const h = () => setM(window.innerWidth < 768);
+    window.addEventListener("resize", h);
+    return () => window.removeEventListener("resize", h);
   }, []);
-  return isMobile;
+  return m;
 }
 
-// ── Reusable components ───────────────────────────────────────────────────────
-const KpiCard = ({ label, value, sub, accent }) => (
-  <div style={{
-    background:"rgba(255,255,255,0.03)", border:"1px solid rgba(255,255,255,0.08)",
-    borderRadius:14, padding:"16px 18px", flex:1, minWidth:130,
-    borderTop:`3px solid ${accent}`,
-  }}>
-    <div style={{ fontSize:10, letterSpacing:"0.1em", textTransform:"uppercase",
-      color:"rgba(255,255,255,0.45)", marginBottom:6 }}>{label}</div>
-    <div style={{ fontSize:26, fontWeight:700, color:"#fff",
-      fontFamily:"'Space Grotesk',sans-serif", lineHeight:1 }}>{value}</div>
-    <div style={{ fontSize:11, color:"rgba(255,255,255,0.4)", marginTop:4 }}>{sub}</div>
-  </div>
-);
-
-const RiskBadge = ({ score }) => (
+// ── Components ────────────────────────────────────────────────────────────────
+const Badge = ({ score }) => (
   <span style={{
-    background: riskColor(score) + "22", color: riskColor(score),
-    border:`1px solid ${riskColor(score)}44`,
-    borderRadius:6, padding:"2px 9px", fontSize:11, fontWeight:600,
+    background: riskBg(score), color: riskColor(score),
+    border: `1px solid ${riskColor(score)}33`,
+    borderRadius: 6, padding: "2px 8px", fontSize: 11,
+    fontWeight: 600, letterSpacing: "0.02em",
   }}>{riskLabel(score)}</span>
 );
 
 const RiskBar = ({ score }) => (
-  <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-    <div style={{ flex:1, height:5, background:"rgba(255,255,255,0.08)", borderRadius:3, overflow:"hidden" }}>
-      <div style={{ width:`${score}%`, height:"100%", background:riskColor(score),
-        borderRadius:3, transition:"width .5s ease" }}/>
+  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+    <div style={{ flex: 1, height: 4, background: T.border, borderRadius: 2, overflow: "hidden" }}>
+      <div style={{
+        width: `${score}%`, height: "100%", background: riskColor(score),
+        borderRadius: 2, transition: "width .5s ease",
+      }} />
     </div>
-    <span style={{ fontSize:11, color:riskColor(score), fontWeight:600, minWidth:24 }}>{score}</span>
+    <span style={{ fontSize: 11, color: riskColor(score), fontWeight: 700, minWidth: 24 }}>{score}</span>
   </div>
 );
 
-const CustomTooltip = ({ active, payload, label }) => {
+const KpiCard = ({ label, value, sub, accent, Icon }) => (
+  <div style={{
+    background: T.surface, border: `1px solid ${T.border}`,
+    borderRadius: T.radius, padding: "20px 22px", flex: 1, minWidth: 130,
+    boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
+  }}>
+    <div style={{
+      display: "flex", alignItems: "center",
+      justifyContent: "space-between", marginBottom: 12
+    }}>
+      <div style={{ fontSize: 12, color: T.textSub, fontWeight: 500 }}>{label}</div>
+      <div style={{
+        width: 34, height: 34, borderRadius: 9, background: accent + "18",
+        display: "flex", alignItems: "center", justifyContent: "center",
+      }}>
+        <Icon size={16} color={accent} strokeWidth={2} />
+      </div>
+    </div>
+    <div style={{ fontSize: 28, fontWeight: 700, color: T.text, lineHeight: 1, marginBottom: 4 }}>
+      {value}
+    </div>
+    <div style={{ fontSize: 12, color: T.textMuted }}>{sub}</div>
+  </div>
+);
+
+const ChartTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null;
   return (
-    <div style={{ background:"#111827", border:"1px solid rgba(255,255,255,0.12)",
-      borderRadius:10, padding:"10px 14px", fontSize:12 }}>
-      <div style={{ color:"rgba(255,255,255,0.5)", marginBottom:4 }}>{label}</div>
+    <div style={{
+      background: T.surface, border: `1px solid ${T.border}`,
+      borderRadius: 10, padding: "10px 14px", fontSize: 12,
+      boxShadow: "0 4px 16px rgba(0,0,0,0.1)",
+    }}>
+      <div style={{ color: T.textSub, marginBottom: 4, fontWeight: 500 }}>{label}</div>
       {payload.map((p, i) => (
-        <div key={i} style={{ color: p.color || "#fff", fontWeight:600 }}>
+        <div key={i} style={{ color: p.color || T.text, fontWeight: 600 }}>
           {p.name}: {p.value}
         </div>
       ))}
@@ -93,29 +138,29 @@ const CustomTooltip = ({ active, payload, label }) => {
 };
 
 const Spinner = () => (
-  <div style={{ display:"flex", alignItems:"center", justifyContent:"center",
-    height:140, color:"rgba(255,255,255,0.25)", fontSize:13, gap:10 }}>
-    <div style={{
-      width:18, height:18, border:"2px solid rgba(255,255,255,0.1)",
-      borderTop:"2px solid #3B9EFF", borderRadius:"50%",
-      animation:"spin 0.8s linear infinite",
-    }}/>
-    Loading from API...
+  <div style={{
+    display: "flex", alignItems: "center", justifyContent: "center",
+    height: 140, color: T.textMuted, fontSize: 13, gap: 10
+  }}>
+    <RefreshCw size={16} color={T.blue} style={{ animation: "spin 0.8s linear infinite" }} />
+    Loading...
     <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
   </div>
 );
 
 const ErrorBanner = ({ msg, onRetry }) => (
   <div style={{
-    background:"rgba(255,77,77,0.08)", border:"1px solid rgba(255,77,77,0.25)",
-    borderRadius:10, padding:"12px 16px", fontSize:13, color:"#FF4D4D",
-    display:"flex", alignItems:"center", justifyContent:"space-between", gap:10,
+    background: T.redLight, border: `1px solid ${T.red}22`,
+    borderRadius: 10, padding: "12px 16px", fontSize: 13, color: T.red,
+    display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10,
   }}>
-    <span>⚠ {msg}</span>
+    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      <AlertTriangle size={14} color={T.red} />
+      <span>{msg}</span>
+    </div>
     <button onClick={onRetry} style={{
-      background:"rgba(255,77,77,0.15)", border:"1px solid rgba(255,77,77,0.3)",
-      color:"#FF4D4D", borderRadius:6, padding:"4px 12px", fontSize:12,
-      cursor:"pointer", flexShrink:0,
+      background: T.red, border: "none", color: "#fff",
+      borderRadius: 6, padding: "4px 12px", fontSize: 12, cursor: "pointer", flexShrink: 0,
     }}>Retry</button>
   </div>
 );
@@ -124,356 +169,379 @@ const ErrorBanner = ({ msg, onRetry }) => (
 export default function SupplyGuardAI() {
   const isMobile = useIsMobile();
 
-  const [tab,          setTab]        = useState("overview");
-  const [sidebarOpen,  setSidebar]    = useState(false);
-  const [matFilter,    setMat]        = useState("All");
-  const [sortCol,      setSort]       = useState("risk_score");
-  const [sortDir,      setSortDir]    = useState(-1);
-  const [altModal,     setAlt]        = useState(null);
-  const [altData,      setAltData]    = useState(null);
-  const [altLoading,   setAltLoading] = useState(false);
-  const [pulse,        setPulse]      = useState(0);
-  const [dismissed,    setDismissed]  = useState([]);
+  const [tab, setTab] = useState("overview");
+  const [sidebar, setSidebar] = useState(false);
+  const [matFilter, setMat] = useState("All");
+  const [sortCol, setSort] = useState("risk_score");
+  const [sortDir, setSortDir] = useState(-1);
+  const [altModal, setAlt] = useState(null);
+  const [altData, setAltData] = useState(null);
+  const [altLoading, setAltLoad] = useState(false);
+  const [pulse, setPulse] = useState(0);
+  const [dismissed, setDismissed] = useState([]);
 
-  const [suppliers,  setSuppliers]  = useState([]);
-  const [portfolio,  setPortfolio]  = useState(null);
-  const [forecast,   setForecast]   = useState([]);
+  const [suppliers, setSuppliers] = useState([]);
+  const [portfolio, setPortfolio] = useState(null);
+  const [forecast, setForecast] = useState([]);
   const [fcInsights, setFcInsights] = useState(null);
-  const [alerts,     setAlerts]     = useState([]);
-  const [alertMeta,  setAlertMeta]  = useState(null);
-  const [loading,    setLoading]    = useState({ suppliers:true, forecast:true, alerts:true });
-  const [errors,     setErrors]     = useState({});
+  const [alerts, setAlerts] = useState([]);
+  const [alertMeta, setAlertMeta] = useState(null);
+  const [loading, setLoading] = useState({ suppliers: true, forecast: true, alerts: true });
+  const [errors, setErrors] = useState({});
 
-  const setErr   = (key, msg) => setErrors(e => ({ ...e, [key]: msg }));
-  const clearErr = (key)      => setErrors(e => ({ ...e, [key]: null }));
+  const setErr = (k, m) => setErrors(e => ({ ...e, [k]: m }));
+  const clearErr = (k) => setErrors(e => ({ ...e, [k]: null }));
 
   const fetchSuppliers = useCallback(async () => {
-    setLoading(l => ({ ...l, suppliers:true }));
-    clearErr("suppliers");
+    setLoading(l => ({ ...l, suppliers: true })); clearErr("suppliers");
     try {
-      const [supRes, portRes] = await Promise.all([api.allSuppliers(), api.portfolioSummary()]);
-      setSuppliers(supRes.suppliers || []);
-      setPortfolio({ ...supRes, materials: portRes.materials });
-    } catch {
-      setErr("suppliers", "Backend is waking up — please wait 50 seconds and click Retry.");
-    } finally {
-      setLoading(l => ({ ...l, suppliers:false }));
-    }
+      const [s, p] = await Promise.all([api.allSuppliers(), api.portfolioSummary()]);
+      setSuppliers(s.suppliers || []); setPortfolio({ ...s, materials: p.materials });
+    } catch { setErr("suppliers", "Backend is waking up — wait 50 seconds and retry."); }
+    finally { setLoading(l => ({ ...l, suppliers: false })); }
   }, []);
 
-  const fetchForecast = useCallback(async (material = "Semiconductors") => {
-    setLoading(l => ({ ...l, forecast:true }));
-    clearErr("forecast");
+  const fetchForecast = useCallback(async (mat = "Semiconductors") => {
+    setLoading(l => ({ ...l, forecast: true })); clearErr("forecast");
     try {
-      const res = await api.forecast(material);
-      setForecast(res.forecast || []);
-      setFcInsights(res.insights || null);
-    } catch {
-      setErr("forecast", "Forecast API unavailable.");
-    } finally {
-      setLoading(l => ({ ...l, forecast:false }));
-    }
+      const r = await api.forecast(mat);
+      setForecast(r.forecast || []); setFcInsights(r.insights || null);
+    } catch { setErr("forecast", "Forecast unavailable."); }
+    finally { setLoading(l => ({ ...l, forecast: false })); }
   }, []);
 
   const fetchAlerts = useCallback(async () => {
-    setLoading(l => ({ ...l, alerts:true }));
-    clearErr("alerts");
+    setLoading(l => ({ ...l, alerts: true })); clearErr("alerts");
     try {
-      const res = await api.alerts();
-      setAlerts(res.alerts || []);
-      setAlertMeta(res);
-    } catch {
-      setErr("alerts", "Alerts API unavailable.");
-    } finally {
-      setLoading(l => ({ ...l, alerts:false }));
-    }
+      const r = await api.alerts(); setAlerts(r.alerts || []); setAlertMeta(r);
+    } catch { setErr("alerts", "Alerts unavailable."); }
+    finally { setLoading(l => ({ ...l, alerts: false })); }
   }, []);
 
   useEffect(() => {
-    fetchSuppliers();
-    fetchForecast();
-    fetchAlerts();
+    fetchSuppliers(); fetchForecast(); fetchAlerts();
     const t = setInterval(() => setPulse(p => p + 1), 1200);
-    const alertTimer = setInterval(fetchAlerts, 60000);
-    return () => { clearInterval(t); clearInterval(alertTimer); };
+    const a = setInterval(fetchAlerts, 60000);
+    return () => { clearInterval(t); clearInterval(a); };
   }, [fetchSuppliers, fetchForecast, fetchAlerts]);
 
-  const openAltModal = async (supplier) => {
-    setAlt(supplier);
-    setAltData(null);
-    setAltLoading(true);
-    try {
-      const res = await api.alternates(supplier.name, supplier.material, supplier.risk_score);
-      setAltData(res);
-    } catch {
-      setAltData({ error: true });
-    } finally {
-      setAltLoading(false);
-    }
+  const openAlt = async (s) => {
+    setAlt(s); setAltData(null); setAltLoad(true);
+    try { const r = await api.alternates(s.name, s.material, s.risk_score); setAltData(r); }
+    catch { setAltData({ error: true }); }
+    finally { setAltLoad(false); }
   };
 
-  const navigateTo = (id) => {
-    setTab(id);
-    setSidebar(false);
-  };
+  const go = (id) => { setTab(id); setSidebar(false); };
 
   const materials = ["All", "Semiconductors", "Battery Metals", "Steel"];
-
   const filtered = suppliers
     .filter(s => matFilter === "All" || s.material === matFilter)
     .sort((a, b) => sortDir * (a[sortCol] > b[sortCol] ? 1 : -1));
 
   const criticalCount = alertMeta ? alertMeta.critical + alertMeta.high : 0;
-  const avgRisk       = portfolio ? Math.round(portfolio.avg_portfolio_risk) : 0;
-  const activeAlerts  = alerts.filter(a => !dismissed.includes(a.id));
+  const avgRisk = portfolio ? Math.round(portfolio.avg_portfolio_risk) : 0;
+  const activeAlerts = alerts.filter(a => !dismissed.includes(a.id));
 
   const handleSort = (col) => {
-    if (sortCol === col) setSortDir(d => -d);
-    else { setSort(col); setSortDir(-1); }
+    if (sortCol === col) setSortDir(d => -d); else { setSort(col); setSortDir(-1); }
   };
 
-  const HEADER_H = 57;
+  const HEADER = 60;
 
   const card = {
-    background:"rgba(255,255,255,0.03)",
-    border:"1px solid rgba(255,255,255,0.08)",
-    borderRadius:16, padding:"20px 24px",
+    background: T.surface, border: `1px solid ${T.border}`,
+    borderRadius: T.radius, padding: "20px 24px",
+    boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
   };
 
-  const filterBtn = (active) => ({
-    padding:"5px 10px", borderRadius:6, fontSize:11, fontWeight:500,
-    background: active ? "rgba(59,158,255,0.15)" : "transparent",
-    color: active ? "#3B9EFF" : "rgba(255,255,255,0.4)",
-    border: active ? "1px solid rgba(59,158,255,0.3)" : "1px solid rgba(255,255,255,0.1)",
-    cursor:"pointer", transition:"all .15s", whiteSpace:"nowrap",
+  const chipBtn = (active) => ({
+    padding: "5px 12px", borderRadius: 20, fontSize: 12, fontWeight: 500,
+    background: active ? T.blue : T.surface,
+    color: active ? "#fff" : T.textSub,
+    border: `1px solid ${active ? T.blue : T.border}`,
+    cursor: "pointer", transition: "all .15s", whiteSpace: "nowrap",
   });
 
   const navItems = [
-    { id:"overview",  label:"Overview" },
-    { id:"suppliers", label:"Suppliers" },
-    { id:"forecast",  label:"Forecast" },
-    { id:"alerts",    label:`Alerts${activeAlerts.length > 0 ? ` (${activeAlerts.length})` : ""}` },
+    { id: "overview", Icon: LayoutDashboard, label: "Overview" },
+    { id: "suppliers", Icon: Truck, label: "Suppliers" },
+    { id: "forecast", Icon: LineChart, label: "Forecast" },
+    { id: "alerts", Icon: Bell, label: `Alerts${activeAlerts.length > 0 ? ` (${activeAlerts.length})` : ""}` },
   ];
 
   return (
-    <div style={{ fontFamily:"'DM Sans','Segoe UI',sans-serif", background:"#070B14",
-      minHeight:"100vh", color:"#fff" }}>
+    <div style={{
+      fontFamily: "'Inter','DM Sans','Segoe UI',sans-serif",
+      background: T.bg, minHeight: "100vh", color: T.text
+    }}>
 
       {/* ── Header ── */}
       <div style={{
-        display:"flex", alignItems:"center", justifyContent:"space-between",
-        padding: isMobile ? "12px 16px" : "14px 28px",
-        borderBottom:"1px solid rgba(255,255,255,0.07)",
-        background:"rgba(255,255,255,0.01)",
-        position:"sticky", top:0, zIndex:60, height: HEADER_H,
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        padding: isMobile ? "0 16px" : "0 28px",
+        background: T.surface, borderBottom: `1px solid ${T.border}`,
+        position: "sticky", top: 0, zIndex: 60, height: HEADER,
+        boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
       }}>
-        {/* Left: hamburger (mobile) + logo */}
-        <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           {isMobile && (
             <button onClick={() => setSidebar(o => !o)} style={{
-              background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.1)",
-              borderRadius:8, color:"#fff", fontSize:18, cursor:"pointer",
-              width:36, height:36, display:"flex", alignItems:"center", justifyContent:"center",
-              flexShrink:0,
+              background: "transparent", border: `1px solid ${T.border}`,
+              borderRadius: 8, color: T.text, cursor: "pointer",
+              width: 36, height: 36, display: "flex", alignItems: "center",
+              justifyContent: "center", flexShrink: 0,
             }}>
-              {sidebarOpen ? "✕" : "☰"}
+              {sidebar
+                ? <X size={18} color={T.text} />
+                : <Menu size={18} color={T.text} />
+              }
             </button>
           )}
-          <div style={{ width:32, height:32, borderRadius:9,
-            background:"linear-gradient(135deg,#3B9EFF,#0052CC)",
-            display:"flex", alignItems:"center", justifyContent:"center",
-            fontSize:16, fontWeight:800, flexShrink:0 }}>S</div>
-          <span style={{ fontSize:16, fontWeight:700, letterSpacing:"-0.02em" }}>
-            SupplyGuard <span style={{ color:"#3B9EFF" }}>AI</span>
-          </span>
+          <div style={{
+            width: 32, height: 32, borderRadius: 9,
+            background: "linear-gradient(135deg,#3B9EFF,#0052CC)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: 16, fontWeight: 800, flexShrink: 0, color: "white"
+          }}>S</div>
+          <div>
+            <span style={{ fontSize: 15, fontWeight: 700, color: T.text, letterSpacing: "-0.02em" }}>
+              SupplyGuard
+            </span>
+            <span style={{ fontSize: 15, fontWeight: 700, color: T.blue, letterSpacing: "-0.02em" }}> AI</span>
+          </div>
           {!isMobile && (
-            <span style={{ fontSize:11, color:"rgba(255,255,255,0.3)",
-              background:"rgba(255,255,255,0.05)", borderRadius:4, padding:"2px 7px",
-              letterSpacing:"0.05em" }}>LIVE API</span>
+            <span style={{
+              fontSize: 10, color: T.blue, background: T.blueLight,
+              border: `1px solid ${T.blueMid}`, borderRadius: 4,
+              padding: "2px 8px", letterSpacing: "0.06em", fontWeight: 600,
+            }}>LIVE API</span>
           )}
         </div>
 
-        {/* Right: filters + live indicator */}
-        <div style={{ display:"flex", alignItems:"center", gap: isMobile ? 8 : 16 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           {!isMobile && (
-            <>
-              <span style={{ fontSize:12, color:"rgba(255,255,255,0.35)" }}>Material focus:</span>
-              <div style={{ display:"flex", gap:6 }}>
-                {materials.map(m => (
-                  <button key={m} style={filterBtn(matFilter === m)}
-                    onClick={() => { setMat(m); if (tab==="forecast" && m!=="All") fetchForecast(m); }}>
-                    {m}
-                  </button>
-                ))}
-              </div>
-            </>
+            <div style={{ display: "flex", gap: 6 }}>
+              {materials.map(m => (
+                <button key={m} style={chipBtn(matFilter === m)}
+                  onClick={() => { setMat(m); if (tab === "forecast" && m !== "All") fetchForecast(m); }}>
+                  {m}
+                </button>
+              ))}
+            </div>
           )}
           <div style={{
-            width:8, height:8, borderRadius:"50%", background:"#2ECC9A", flexShrink:0,
-            boxShadow:`0 0 ${pulse % 2 === 0 ? 8 : 4}px #2ECC9A`, transition:"box-shadow .4s",
-          }}/>
-          <span style={{ fontSize:12, color:"#2ECC9A" }}>Live</span>
+            display: "flex", alignItems: "center", gap: 6,
+            background: T.greenLight, border: `1px solid ${T.green}33`,
+            borderRadius: 20, padding: "5px 10px"
+          }}>
+            <Activity size={12} color={T.green} strokeWidth={2.5}
+              style={{ animation: pulse % 2 === 0 ? "none" : "none" }} />
+            <span style={{ fontSize: 11, color: T.green, fontWeight: 600 }}>Live</span>
+          </div>
         </div>
       </div>
 
-      {/* ── Mobile overlay ── */}
-      {isMobile && sidebarOpen && (
+      {/* Mobile overlay */}
+      {isMobile && sidebar && (
         <div onClick={() => setSidebar(false)} style={{
-          position:"fixed", inset:0, top: HEADER_H,
-          background:"rgba(0,0,0,0.6)", zIndex:49,
-        }}/>
+          position: "fixed", inset: 0, top: HEADER,
+          background: "rgba(0,0,0,0.3)", zIndex: 49,
+        }} />
       )}
 
-      <div style={{ display:"flex", height:`calc(100vh - ${HEADER_H}px)` }}>
+      <div style={{ display: "flex", height: `calc(100vh - ${HEADER}px)` }}>
 
         {/* ── Sidebar ── */}
         <div style={{
-          width:220, background:"rgba(7,11,20,0.98)",
-          borderRight:"1px solid rgba(255,255,255,0.07)",
-          display:"flex", flexDirection:"column", padding:"20px 0", gap:2,
-          flexShrink:0,
+          width: 220, background: T.surface, borderRight: `1px solid ${T.border}`,
+          display: "flex", flexDirection: "column", padding: "16px 0", flexShrink: 0,
           ...(isMobile ? {
-            position:"fixed", left: sidebarOpen ? 0 : -220,
-            top: HEADER_H, height:`calc(100vh - ${HEADER_H}px)`,
-            zIndex:50, transition:"left 0.28s cubic-bezier(0.4,0,0.2,1)",
-            boxShadow: sidebarOpen ? "4px 0 24px rgba(0,0,0,0.5)" : "none",
-          } : {
-            position:"relative",
-          }),
+            position: "fixed", left: sidebar ? 0 : -220, top: HEADER,
+            height: `calc(100vh - ${HEADER}px)`, zIndex: 50,
+            transition: "left 0.25s cubic-bezier(0.4,0,0.2,1)",
+            boxShadow: sidebar ? "4px 0 20px rgba(0,0,0,0.12)" : "none",
+          } : {}),
         }}>
-          <div style={{ padding:"0 20px 12px", fontSize:10, letterSpacing:"0.12em",
-            textTransform:"uppercase", color:"rgba(255,255,255,0.2)" }}>Navigation</div>
+          <div style={{
+            padding: "0 16px 10px", fontSize: 10, letterSpacing: "0.1em",
+            textTransform: "uppercase", color: T.textMuted, fontWeight: 600
+          }}>Menu</div>
 
-          {navItems.map(n => (
-            <div key={n.id}
-              onClick={() => navigateTo(n.id)}
-              style={{
-                display:"flex", alignItems:"center", gap:10, padding:"11px 20px",
-                fontSize:13, fontWeight: tab === n.id ? 600 : 400,
-                color: tab === n.id ? "#3B9EFF" : "rgba(255,255,255,0.5)",
-                background: tab === n.id ? "rgba(59,158,255,0.08)" : "transparent",
-                borderLeft: tab === n.id ? "2px solid #3B9EFF" : "2px solid transparent",
-                cursor:"pointer", transition:"all .15s",
-                borderRadius:"0 8px 8px 0", userSelect:"none",
-              }}>
-              {n.label}
-              {n.id === "alerts" && (alertMeta?.critical || 0) > 0 && (
-                <span style={{ marginLeft:"auto", background:"#FF4D4D", color:"#fff",
-                  borderRadius:"50%", width:16, height:16, fontSize:9, fontWeight:700,
-                  display:"flex", alignItems:"center", justifyContent:"center" }}>!</span>
+          {navItems.map(({ id, Icon, label }) => (
+            <div key={id} onClick={() => go(id)} style={{
+              display: "flex", alignItems: "center", gap: 10, padding: "10px 16px",
+              fontSize: 13, fontWeight: tab === id ? 600 : 400,
+              color: tab === id ? T.blue : T.textSub,
+              background: tab === id ? T.blueLight : "transparent",
+              borderLeft: tab === id ? `3px solid ${T.blue}` : "3px solid transparent",
+              cursor: "pointer", transition: "all .12s",
+              borderRadius: "0 8px 8px 0", userSelect: "none", margin: "1px 0",
+            }}>
+              <Icon size={15} strokeWidth={tab === id ? 2.5 : 2}
+                color={tab === id ? T.blue : T.textMuted} />
+              {label}
+              {id === "alerts" && (alertMeta?.critical || 0) > 0 && (
+                <span style={{
+                  marginLeft: "auto", background: T.red, color: "#fff",
+                  borderRadius: 10, padding: "1px 6px", fontSize: 10, fontWeight: 700,
+                }}>{alertMeta.critical}</span>
               )}
             </div>
           ))}
 
-          {/* Mobile material filter inside sidebar */}
           {isMobile && (
-            <div style={{ padding:"16px 20px 0", borderTop:"1px solid rgba(255,255,255,0.06)", marginTop:8 }}>
-              <div style={{ fontSize:10, letterSpacing:"0.1em", textTransform:"uppercase",
-                color:"rgba(255,255,255,0.2)", marginBottom:10 }}>Material Focus</div>
-              <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
-                {materials.map(m => (
-                  <button key={m} style={{
-                    ...filterBtn(matFilter === m),
-                    textAlign:"left", width:"100%", padding:"7px 10px",
-                  }}
-                    onClick={() => { setMat(m); if (tab==="forecast" && m!=="All") fetchForecast(m); }}>
-                    {m}
-                  </button>
-                ))}
-              </div>
+            <div style={{
+              padding: "14px 16px 0",
+              borderTop: `1px solid ${T.border}`, marginTop: 10
+            }}>
+              <div style={{
+                fontSize: 10, textTransform: "uppercase",
+                letterSpacing: "0.1em", color: T.textMuted,
+                fontWeight: 600, marginBottom: 8
+              }}>Material</div>
+              {materials.map(m => (
+                <button key={m} style={{
+                  ...chipBtn(matFilter === m), display: "block", width: "100%",
+                  textAlign: "left", marginBottom: 5, borderRadius: 8,
+                }}
+                  onClick={() => { setMat(m); if (tab === "forecast" && m !== "All") fetchForecast(m); }}>
+                  {m}
+                </button>
+              ))}
             </div>
           )}
 
-          <div style={{ marginTop:"auto", padding:"16px 20px",
-            borderTop:"1px solid rgba(255,255,255,0.06)" }}>
-            <div style={{ fontSize:11, color:"rgba(255,255,255,0.25)", marginBottom:6 }}>
-              Overall supply risk
+          <div style={{
+            marginTop: "auto", padding: "14px 16px",
+            borderTop: `1px solid ${T.border}`
+          }}>
+            <div style={{ fontSize: 11, color: T.textMuted, marginBottom: 6, fontWeight: 500 }}>
+              Portfolio risk
             </div>
             {loading.suppliers
-              ? <div style={{ fontSize:12, color:"rgba(255,255,255,0.2)" }}>Loading...</div>
+              ? <div style={{ fontSize: 12, color: T.textMuted }}>Loading...</div>
               : <>
-                  <div style={{ fontSize:24, fontWeight:700, color:riskColor(avgRisk) }}>{avgRisk}</div>
-                  <RiskBar score={avgRisk}/>
-                </>
+                <div style={{
+                  fontSize: 26, fontWeight: 800,
+                  color: riskColor(avgRisk), marginBottom: 4
+                }}>{avgRisk}</div>
+                <RiskBar score={avgRisk} />
+              </>
             }
           </div>
         </div>
 
-        {/* ── Main content ── */}
+        {/* ── Content ── */}
         <div style={{
-          flex:1, overflow:"auto",
+          flex: 1, overflow: "auto",
           padding: isMobile ? "20px 16px" : "28px 32px",
         }}>
 
           {/* ══ OVERVIEW ══ */}
           {tab === "overview" && (
-            <div style={{ display:"flex", flexDirection:"column", gap:20 }}>
-              <div>
-                <div style={{ fontSize:18, fontWeight:700, color:"#fff",
-                  letterSpacing:"-0.02em", marginBottom:4 }}>Supply Chain Overview</div>
-                <div style={{ fontSize:13, color:"rgba(255,255,255,0.35)" }}>
-                  Real-time risk intelligence · {suppliers.length} suppliers tracked
+            <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+              <div style={{
+                display: "flex", alignItems: "flex-start",
+                justifyContent: "space-between", flexWrap: "wrap", gap: 8
+              }}>
+                <div>
+                  <h1 style={{
+                    fontSize: 22, fontWeight: 700, color: T.text,
+                    margin: 0, letterSpacing: "-0.03em"
+                  }}>Supply Chain Overview</h1>
+                  <p style={{ fontSize: 13, color: T.textSub, margin: "4px 0 0" }}>
+                    Real-time risk intelligence · {suppliers.length} suppliers tracked
+                  </p>
                 </div>
+                <button onClick={fetchSuppliers} style={{
+                  display: "flex", alignItems: "center", gap: 6,
+                  background: T.blue, border: "none", color: "#fff",
+                  borderRadius: 8, padding: "8px 16px", fontSize: 12,
+                  fontWeight: 600, cursor: "pointer",
+                }}>
+                  <RefreshCw size={13} /> Refresh
+                </button>
               </div>
 
-              {errors.suppliers && <ErrorBanner msg={errors.suppliers} onRetry={fetchSuppliers}/>}
+              {errors.suppliers && <ErrorBanner msg={errors.suppliers} onRetry={fetchSuppliers} />}
 
-              <div style={{ display:"flex", gap:10, flexWrap:"wrap" }}>
-                <KpiCard label="Active Suppliers" value={loading.suppliers ? "—" : suppliers.length}
-                  sub="Across global regions" accent="#3B9EFF"/>
-                <KpiCard label="High Risk" value={loading.alerts ? "—" : criticalCount}
-                  sub="Alerts requiring action" accent="#FF4D4D"/>
-                <KpiCard label="Avg Risk Score" value={loading.suppliers ? "—" : avgRisk}
-                  sub="AI-predicted portfolio avg" accent={riskColor(avgRisk)}/>
-                <KpiCard label="Alternates Ready"
+              <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+                <KpiCard label="Active Suppliers" Icon={Factory}
+                  value={loading.suppliers ? "—" : suppliers.length}
+                  sub="Across global regions" accent={T.blue} />
+                <KpiCard label="High Risk Alerts" Icon={ShieldAlert}
+                  value={loading.alerts ? "—" : criticalCount}
+                  sub="Requiring action" accent={T.red} />
+                <KpiCard label="Avg Risk Score" Icon={BarChart2}
+                  value={loading.suppliers ? "—" : avgRisk}
+                  sub="AI portfolio prediction" accent={riskColor(avgRisk)} />
+                <KpiCard label="Alternates Ready" Icon={ArrowRightLeft}
                   value={loading.suppliers ? "—" : suppliers.filter(s => s.risk_score >= 60).length}
-                  sub="High-risk suppliers" accent="#2ECC9A"/>
+                  sub="Backup suppliers identified" accent={T.green} />
               </div>
 
-              <div style={{ display:"grid",
-                gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap:16 }}>
+              <div style={{
+                display: "grid",
+                gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 16
+              }}>
                 <div style={card}>
-                  <div style={{ fontSize:13, fontWeight:600, marginBottom:16,
-                    color:"rgba(255,255,255,0.8)" }}>Portfolio Risk Score — 12 months</div>
-                  <ResponsiveContainer width="100%" height={180}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: T.text, marginBottom: 4 }}>
+                    Portfolio Risk — 12 months
+                  </div>
+                  <div style={{ fontSize: 12, color: T.textMuted, marginBottom: 14 }}>
+                    Historical risk score trend
+                  </div>
+                  <ResponsiveContainer width="100%" height={170}>
                     <AreaChart data={RISK_HISTORY}>
                       <defs>
                         <linearGradient id="rg" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%"  stopColor="#FF4D4D" stopOpacity={0.25}/>
-                          <stop offset="95%" stopColor="#FF4D4D" stopOpacity={0}/>
+                          <stop offset="5%" stopColor={T.red} stopOpacity={0.12} />
+                          <stop offset="95%" stopColor={T.red} stopOpacity={0} />
                         </linearGradient>
                       </defs>
-                      <CartesianGrid strokeDasharray="2 4" stroke="rgba(255,255,255,0.06)"/>
-                      <XAxis dataKey="month" tick={{ fontSize:10, fill:"rgba(255,255,255,0.35)" }}
-                        axisLine={false} tickLine={false}/>
-                      <YAxis tick={{ fontSize:10, fill:"rgba(255,255,255,0.35)" }}
-                        axisLine={false} tickLine={false} domain={[0,100]}/>
-                      <Tooltip content={<CustomTooltip/>}/>
+                      <CartesianGrid strokeDasharray="2 4" stroke={T.border} />
+                      <XAxis dataKey="month" tick={{ fontSize: 10, fill: T.textMuted }}
+                        axisLine={false} tickLine={false} />
+                      <YAxis tick={{ fontSize: 10, fill: T.textMuted }}
+                        axisLine={false} tickLine={false} domain={[0, 100]} />
+                      <Tooltip content={<ChartTooltip />} />
                       <Area type="monotone" dataKey="score" name="Risk score"
-                        stroke="#FF4D4D" strokeWidth={2} fill="url(#rg)"/>
+                        stroke={T.red} strokeWidth={2} fill="url(#rg)" />
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
 
                 <div style={card}>
-                  <div style={{ fontSize:13, fontWeight:600, marginBottom:16,
-                    color:"rgba(255,255,255,0.8)" }}>
-                    Risk by Material Category
-                    <span style={{ fontSize:11, color:"#2ECC9A", marginLeft:8 }}>AI model</span>
+                  <div style={{
+                    display: "flex", alignItems: "center",
+                    justifyContent: "space-between", marginBottom: 4
+                  }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: T.text }}>
+                      Risk by Material
+                    </div>
+                    <span style={{
+                      fontSize: 10, color: T.green, background: T.greenLight,
+                      border: `1px solid ${T.green}33`, borderRadius: 4,
+                      padding: "2px 7px", fontWeight: 600
+                    }}>AI model</span>
                   </div>
-                  {loading.suppliers ? <Spinner/> : (
-                    <ResponsiveContainer width="100%" height={180}>
+                  <div style={{ fontSize: 12, color: T.textMuted, marginBottom: 14 }}>
+                    Average predicted risk per category
+                  </div>
+                  {loading.suppliers ? <Spinner /> : (
+                    <ResponsiveContainer width="100%" height={155}>
                       <BarChart
                         data={portfolio?.materials?.map(m => ({ name: m.material, risk: m.avg_risk })) || []}
                         layout="vertical" barSize={10}>
-                        <CartesianGrid strokeDasharray="2 4" stroke="rgba(255,255,255,0.06)" horizontal={false}/>
-                        <XAxis type="number" tick={{ fontSize:10, fill:"rgba(255,255,255,0.35)" }}
-                          axisLine={false} tickLine={false} domain={[0,100]}/>
+                        <CartesianGrid strokeDasharray="2 4" stroke={T.border} horizontal={false} />
+                        <XAxis type="number" tick={{ fontSize: 10, fill: T.textMuted }}
+                          axisLine={false} tickLine={false} domain={[0, 100]} />
                         <YAxis type="category" dataKey="name"
-                          tick={{ fontSize: isMobile ? 9 : 11, fill:"rgba(255,255,255,0.5)" }}
-                          axisLine={false} tickLine={false} width={isMobile ? 80 : 100}/>
-                        <Tooltip content={<CustomTooltip/>}/>
-                        <Bar dataKey="risk" name="Risk score" radius={[0,5,5,0]} fill="#3B9EFF"/>
+                          tick={{ fontSize: isMobile ? 9 : 10, fill: T.textSub }}
+                          axisLine={false} tickLine={false} width={isMobile ? 75 : 100} />
+                        <Tooltip content={<ChartTooltip />} />
+                        <Bar dataKey="risk" name="Risk score" radius={[0, 5, 5, 0]} fill={T.blue} />
                       </BarChart>
                     </ResponsiveContainer>
                   )}
@@ -481,67 +549,107 @@ export default function SupplyGuardAI() {
               </div>
 
               <div style={card}>
-                <div style={{ display:"flex", justifyContent:"space-between",
-                  alignItems:"center", marginBottom:14, flexWrap:"wrap", gap:8 }}>
-                  <div style={{ fontSize:13, fontWeight:600, color:"rgba(255,255,255,0.8)" }}>
-                    Recent Alerts
+                <div style={{
+                  display: "flex", justifyContent: "space-between",
+                  alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 8
+                }}>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: T.text }}>Recent Alerts</div>
                     {alertMeta && (
-                      <span style={{ fontSize:11, color:"rgba(255,255,255,0.3)", marginLeft:8 }}>
+                      <div style={{ fontSize: 12, color: T.textMuted, marginTop: 2 }}>
                         {alertMeta.total} total · {alertMeta.critical} critical
-                      </span>
+                      </div>
                     )}
                   </div>
-                  <button style={{ background:"transparent", border:"1px solid rgba(255,255,255,0.1)",
-                    color:"rgba(255,255,255,0.4)", borderRadius:7, padding:"5px 12px",
-                    fontSize:12, cursor:"pointer" }} onClick={() => navigateTo("alerts")}>
-                    View all →
+                  <button onClick={() => go("alerts")} style={{
+                    display: "flex", alignItems: "center", gap: 5,
+                    background: "transparent", border: `1px solid ${T.border}`,
+                    color: T.textSub, borderRadius: 8, padding: "5px 12px",
+                    fontSize: 12, cursor: "pointer", fontWeight: 500,
+                  }}>
+                    View all <ChevronDown size={12} />
                   </button>
                 </div>
-                {loading.alerts ? <Spinner/> : alerts.slice(0, 3).map(a => (
-                  <div key={a.id} style={{ display:"flex", alignItems:"flex-start", gap:12,
-                    padding:"9px 0", borderBottom:"1px solid rgba(255,255,255,0.05)" }}>
-                    <div style={{ width:7, height:7, borderRadius:"50%", marginTop:4,
-                      background:sevColor[a.severity], flexShrink:0,
-                      boxShadow:`0 0 6px ${sevColor[a.severity]}` }}/>
-                    <div style={{ flex:1, fontSize:13, color:"rgba(255,255,255,0.75)" }}>{a.message}</div>
-                    <div style={{ fontSize:11, color:"rgba(255,255,255,0.3)", flexShrink:0 }}>{a.time_ago}</div>
-                  </div>
-                ))}
+                {loading.alerts ? <Spinner /> : alerts.slice(0, 3).map(a => {
+                  const SevIcon = sevIcon[a.severity] || AlertTriangle;
+                  return (
+                    <div key={a.id} style={{
+                      display: "flex", alignItems: "flex-start",
+                      gap: 12, padding: "10px 0", borderBottom: `1px solid ${T.border}`
+                    }}>
+                      <div style={{
+                        width: 32, height: 32, borderRadius: 8, flexShrink: 0,
+                        background: sevBg[a.severity],
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                      }}>
+                        <SevIcon size={14} color={sevColor[a.severity]} strokeWidth={2.5} />
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 13, color: T.text, fontWeight: 500 }}>{a.message}</div>
+                        <div style={{ fontSize: 11, color: T.textMuted, marginTop: 2 }}>
+                          {a.region} · {a.time_ago}
+                        </div>
+                      </div>
+                      <span style={{
+                        fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 4,
+                        background: sevBg[a.severity], color: sevColor[a.severity],
+                        textTransform: "uppercase", letterSpacing: "0.05em", flexShrink: 0,
+                      }}>{a.severity}</span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
 
           {/* ══ SUPPLIERS ══ */}
           {tab === "suppliers" && (
-            <div style={{ display:"flex", flexDirection:"column", gap:20 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
               <div>
-                <div style={{ fontSize:18, fontWeight:700, color:"#fff",
-                  letterSpacing:"-0.02em", marginBottom:4 }}>Supplier Intelligence</div>
-                <div style={{ fontSize:13, color:"rgba(255,255,255,0.35)" }}>
-                  {filtered.length} suppliers · AI risk scores
-                </div>
+                <h1 style={{
+                  fontSize: 22, fontWeight: 700, color: T.text,
+                  margin: 0, letterSpacing: "-0.03em"
+                }}>Supplier Intelligence</h1>
+                <p style={{ fontSize: 13, color: T.textSub, margin: "4px 0 0" }}>
+                  {filtered.length} suppliers · AI-predicted risk scores
+                </p>
               </div>
-              {errors.suppliers && <ErrorBanner msg={errors.suppliers} onRetry={fetchSuppliers}/>}
-              {loading.suppliers ? <Spinner/> : (
-                <div style={{ ...card, padding:0, overflow:"hidden", overflowX:"auto" }}>
-                  <table style={{ width:"100%", borderCollapse:"collapse", minWidth: isMobile ? 600 : "auto" }}>
+              {errors.suppliers && <ErrorBanner msg={errors.suppliers} onRetry={fetchSuppliers} />}
+              {loading.suppliers ? <Spinner /> : (
+                <div style={{ ...card, padding: 0, overflow: "hidden", overflowX: "auto" }}>
+                  <table style={{
+                    width: "100%", borderCollapse: "collapse",
+                    minWidth: isMobile ? 580 : "auto"
+                  }}>
                     <thead>
-                      <tr style={{ borderBottom:"1px solid rgba(255,255,255,0.07)" }}>
+                      <tr style={{ background: T.bg, borderBottom: `1px solid ${T.border}` }}>
                         {[
-                          ["name","Supplier"], ["country","Country"], ["material","Material"],
-                          ["risk_score","Risk"], ["lead_time","Lead"],
-                          ["rating","Rating"], ["geo_score","Geo"],
+                          ["name", "Supplier"], ["country", "Country"], ["material", "Material"],
+                          ["risk_score", "Risk"], ["lead_time", "Lead"],
+                          ["rating", "Rating"], ["geo_score", "Geo"],
                         ].map(([col, label]) => (
-                          <th key={col}
-                            onClick={() => handleSort(col)}
-                            style={{ fontSize:10, letterSpacing:"0.08em", textTransform:"uppercase",
-                              color:"rgba(255,255,255,0.35)", padding:"8px 10px", textAlign:"left",
-                              cursor:"pointer", userSelect:"none", whiteSpace:"nowrap" }}>
-                            {label} {sortCol === col ? (sortDir === -1 ? "↓" : "↑") : ""}
+                          <th key={col} onClick={() => handleSort(col)} style={{
+                            fontSize: 11, letterSpacing: "0.06em", textTransform: "uppercase",
+                            color: T.textMuted, padding: "10px 12px", textAlign: "left",
+                            cursor: "pointer", userSelect: "none",
+                            whiteSpace: "nowrap", fontWeight: 600,
+                          }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                              {label}
+                              {sortCol === col
+                                ? sortDir === -1
+                                  ? <ChevronDown size={11} color={T.blue} />
+                                  : <ChevronUp size={11} color={T.blue} />
+                                : null
+                              }
+                            </div>
                           </th>
                         ))}
-                        <th style={{ fontSize:10, letterSpacing:"0.08em", textTransform:"uppercase",
-                          color:"rgba(255,255,255,0.35)", padding:"8px 10px", textAlign:"left" }}>
+                        <th style={{
+                          fontSize: 11, letterSpacing: "0.06em",
+                          textTransform: "uppercase", color: T.textMuted,
+                          padding: "10px 12px", textAlign: "left", fontWeight: 600
+                        }}>
                           Action
                         </th>
                       </tr>
@@ -549,53 +657,73 @@ export default function SupplyGuardAI() {
                     <tbody>
                       {filtered.map((s, i) => (
                         <tr key={i}
-                          onMouseEnter={e => e.currentTarget.style.background="rgba(255,255,255,0.03)"}
-                          onMouseLeave={e => e.currentTarget.style.background="transparent"}>
-                          <td style={{ padding:"10px", fontSize:13, borderBottom:"1px solid rgba(255,255,255,0.04)" }}>
-                            <div style={{ fontWeight:600, fontSize:12 }}>{s.name}</div>
+                          onMouseEnter={e => e.currentTarget.style.background = T.bg}
+                          onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+                          style={{ transition: "background .1s" }}>
+                          <td style={{ padding: "12px", borderBottom: `1px solid ${T.border}` }}>
+                            <div style={{ fontWeight: 600, fontSize: 13, color: T.text }}>{s.name}</div>
                           </td>
-                          <td style={{ padding:"10px", fontSize:12, color:"rgba(255,255,255,0.5)",
-                            borderBottom:"1px solid rgba(255,255,255,0.04)", whiteSpace:"nowrap" }}>
+                          <td style={{
+                            padding: "12px", fontSize: 12, color: T.textSub,
+                            borderBottom: `1px solid ${T.border}`, whiteSpace: "nowrap"
+                          }}>
                             {s.country}
                           </td>
-                          <td style={{ padding:"10px", borderBottom:"1px solid rgba(255,255,255,0.04)" }}>
-                            <span style={{ fontSize:10, padding:"2px 6px", borderRadius:5,
-                              background:"rgba(59,158,255,0.1)", color:"#3B9EFF", whiteSpace:"nowrap" }}>
-                              {s.material}
-                            </span>
+                          <td style={{ padding: "12px", borderBottom: `1px solid ${T.border}` }}>
+                            <span style={{
+                              fontSize: 11, padding: "3px 8px", borderRadius: 4,
+                              background: T.blueLight, color: T.blue, fontWeight: 500,
+                              whiteSpace: "nowrap"
+                            }}>{s.material}</span>
                           </td>
-                          <td style={{ padding:"10px", borderBottom:"1px solid rgba(255,255,255,0.04)" }}>
-                            <div style={{ display:"flex", flexDirection:"column", gap:3 }}>
-                              <RiskBadge score={s.risk_score}/>
-                              <RiskBar score={Math.round(s.risk_score)}/>
+                          <td style={{ padding: "12px", borderBottom: `1px solid ${T.border}` }}>
+                            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                              <Badge score={s.risk_score} />
+                              <RiskBar score={Math.round(s.risk_score)} />
                             </div>
                           </td>
-                          <td style={{ padding:"10px", fontSize:12, color:"rgba(255,255,255,0.7)",
-                            borderBottom:"1px solid rgba(255,255,255,0.04)", whiteSpace:"nowrap" }}>
+                          <td style={{
+                            padding: "12px", fontSize: 12, color: T.textSub,
+                            borderBottom: `1px solid ${T.border}`, whiteSpace: "nowrap"
+                          }}>
                             {s.lead_time}d
                           </td>
-                          <td style={{ padding:"10px", borderBottom:"1px solid rgba(255,255,255,0.04)" }}>
-                            <span style={{ color:"#F5A623", fontWeight:600, fontSize:12 }}>
+                          <td style={{ padding: "12px", borderBottom: `1px solid ${T.border}` }}>
+                            <span style={{ color: "#F59E0B", fontWeight: 700, fontSize: 13 }}>
                               {"★".repeat(Math.floor(s.rating))}
-                              <span style={{ color:"rgba(255,255,255,0.2)" }}>
+                              <span style={{ color: T.border }}>
                                 {"★".repeat(5 - Math.floor(s.rating))}
                               </span>
                             </span>
+                            <span style={{ fontSize: 11, color: T.textMuted, marginLeft: 4 }}>
+                              {s.rating}
+                            </span>
                           </td>
-                          <td style={{ padding:"10px", borderBottom:"1px solid rgba(255,255,255,0.04)" }}>
-                            <span style={{ color:riskColor(s.geo_score), fontSize:12, fontWeight:600 }}>
+                          <td style={{ padding: "12px", borderBottom: `1px solid ${T.border}` }}>
+                            <span style={{
+                              color: riskColor(s.geo_score),
+                              fontSize: 12, fontWeight: 700
+                            }}>
                               {Math.round(s.geo_score)}
                             </span>
                           </td>
-                          <td style={{ padding:"10px", borderBottom:"1px solid rgba(255,255,255,0.04)" }}>
+                          <td style={{ padding: "12px", borderBottom: `1px solid ${T.border}` }}>
                             {s.risk_score >= 40
-                              ? <button onClick={() => openAltModal(s)} style={{
-                                  background:"rgba(46,204,154,0.1)", color:"#2ECC9A",
-                                  border:"1px solid rgba(46,204,154,0.3)", borderRadius:6,
-                                  padding:"4px 8px", fontSize:10, fontWeight:600,
-                                  cursor:"pointer", whiteSpace:"nowrap",
-                                }}>Find alt</button>
-                              : <span style={{ fontSize:10, color:"rgba(255,255,255,0.2)" }}>Low risk</span>
+                              ? <button onClick={() => openAlt(s)} style={{
+                                display: "flex", alignItems: "center", gap: 5,
+                                background: T.blue, color: "#fff", border: "none",
+                                borderRadius: 6, padding: "5px 10px", fontSize: 11,
+                                fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap",
+                              }}>
+                                <ArrowRightLeft size={11} /> Find alt
+                              </button>
+                              : <span style={{
+                                display: "flex", alignItems: "center", gap: 4,
+                                fontSize: 11, color: T.green, background: T.greenLight,
+                                padding: "3px 8px", borderRadius: 4, fontWeight: 500
+                              }}>
+                                <CheckCircle2 size={11} color={T.green} /> Safe
+                              </span>
                             }
                           </td>
                         </tr>
@@ -609,76 +737,116 @@ export default function SupplyGuardAI() {
 
           {/* ══ FORECAST ══ */}
           {tab === "forecast" && (
-            <div style={{ display:"flex", flexDirection:"column", gap:20 }}>
-              <div style={{ display:"flex", justifyContent:"space-between",
-                alignItems:"flex-start", flexWrap:"wrap", gap:12 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+              <div style={{
+                display: "flex", justifyContent: "space-between",
+                alignItems: "flex-start", flexWrap: "wrap", gap: 12
+              }}>
                 <div>
-                  <div style={{ fontSize:18, fontWeight:700, color:"#fff",
-                    letterSpacing:"-0.02em", marginBottom:4 }}>Demand Forecast</div>
-                  <div style={{ fontSize:13, color:"rgba(255,255,255,0.35)" }}>
-                    AI model · 12-week projection · 80% confidence band
-                  </div>
+                  <h1 style={{
+                    fontSize: 22, fontWeight: 700, color: T.text,
+                    margin: 0, letterSpacing: "-0.03em"
+                  }}>Demand Forecast</h1>
+                  <p style={{ fontSize: 13, color: T.textSub, margin: "4px 0 0" }}>
+                    Holt-Winters model · 12-week projection · 80% confidence band
+                  </p>
                 </div>
-                <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
-                  {["Semiconductors","Battery Metals","Steel"].map(m => (
-                    <button key={m} style={filterBtn(matFilter === m)}
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  {["Semiconductors", "Battery Metals", "Steel"].map(m => (
+                    <button key={m} style={chipBtn(matFilter === m)}
                       onClick={() => { setMat(m); fetchForecast(m); }}>{m}</button>
                   ))}
                 </div>
               </div>
-              {errors.forecast && <ErrorBanner msg={errors.forecast} onRetry={() => fetchForecast(matFilter)}/>}
+              {errors.forecast && <ErrorBanner msg={errors.forecast} onRetry={() => fetchForecast(matFilter)} />}
+
               <div style={card}>
-                <div style={{ fontSize:13, fontWeight:600, marginBottom:20,
-                  color:"rgba(255,255,255,0.8)" }}>
-                  Units required · {matFilter === "All" ? "Semiconductors" : matFilter}
-                  <span style={{ fontSize:11, color:"#2ECC9A", marginLeft:8 }}>Prophet model</span>
+                <div style={{
+                  display: "flex", alignItems: "flex-start",
+                  justifyContent: "space-between", marginBottom: 20,
+                  flexWrap: "wrap", gap: 8
+                }}>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: T.text }}>
+                      Units required · {matFilter === "All" ? "Semiconductors" : matFilter}
+                    </div>
+                    <div style={{ fontSize: 12, color: T.textMuted, marginTop: 2 }}>
+                      Projected inventory demand with confidence intervals
+                    </div>
+                  </div>
+                  <span style={{
+                    fontSize: 11, color: T.green, background: T.greenLight,
+                    border: `1px solid ${T.green}33`, borderRadius: 4,
+                    padding: "3px 9px", fontWeight: 600
+                  }}>AI model</span>
                 </div>
-                {loading.forecast ? <Spinner/> : (
-                  <ResponsiveContainer width="100%" height={isMobile ? 220 : 280}>
-                    <AreaChart data={forecast} margin={{ top:5, right:10, bottom:0, left:0 }}>
+                {loading.forecast ? <Spinner /> : (
+                  <ResponsiveContainer width="100%" height={isMobile ? 200 : 260}>
+                    <AreaChart data={forecast} margin={{ top: 5, right: 10, bottom: 0, left: 0 }}>
                       <defs>
                         <linearGradient id="dg" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%"  stopColor="#3B9EFF" stopOpacity={0.3}/>
-                          <stop offset="95%" stopColor="#3B9EFF" stopOpacity={0}/>
+                          <stop offset="5%" stopColor={T.blue} stopOpacity={0.15} />
+                          <stop offset="95%" stopColor={T.blue} stopOpacity={0} />
                         </linearGradient>
-                        <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%"  stopColor="#2ECC9A" stopOpacity={0.08}/>
-                          <stop offset="100%" stopColor="#2ECC9A" stopOpacity={0.02}/>
+                        <linearGradient id="ug" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor={T.green} stopOpacity={0.05} />
+                          <stop offset="100%" stopColor={T.green} stopOpacity={0.01} />
                         </linearGradient>
                       </defs>
-                      <CartesianGrid strokeDasharray="2 6" stroke="rgba(255,255,255,0.06)"/>
-                      <XAxis dataKey="week" tick={{ fontSize:10, fill:"rgba(255,255,255,0.35)" }}
-                        axisLine={false} tickLine={false}/>
-                      <YAxis tick={{ fontSize:10, fill:"rgba(255,255,255,0.35)" }}
-                        axisLine={false} tickLine={false}/>
-                      <Tooltip content={<CustomTooltip/>}/>
-                      <Area type="monotone" dataKey="upper" name="Upper bound"
-                        stroke="none" fill="url(#bg)" fillOpacity={1}/>
-                      <Area type="monotone" dataKey="lower" name="Lower bound"
-                        stroke="none" fill="#070B14" fillOpacity={1}/>
-                      <Area type="monotone" dataKey="demand" name="Demand forecast"
-                        stroke="#3B9EFF" strokeWidth={2.5} fill="url(#dg)"/>
+                      <CartesianGrid strokeDasharray="2 6" stroke={T.border} />
+                      <XAxis dataKey="week" tick={{ fontSize: 10, fill: T.textMuted }}
+                        axisLine={false} tickLine={false} />
+                      <YAxis tick={{ fontSize: 10, fill: T.textMuted }}
+                        axisLine={false} tickLine={false} />
+                      <Tooltip content={<ChartTooltip />} />
+                      <Area type="monotone" dataKey="upper" name="Upper"
+                        stroke="none" fill="url(#ug)" fillOpacity={1} />
+                      <Area type="monotone" dataKey="lower" name="Lower"
+                        stroke="none" fill={T.surface} fillOpacity={1} />
+                      <Area type="monotone" dataKey="demand" name="Forecast"
+                        stroke={T.blue} strokeWidth={2.5} fill="url(#dg)" />
                     </AreaChart>
                   </ResponsiveContainer>
                 )}
               </div>
 
               {fcInsights && (
-                <div style={{ display:"grid",
-                  gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(3,1fr)", gap:12 }}>
+                <div style={{
+                  display: "grid",
+                  gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(3,1fr)", gap: 12
+                }}>
                   {[
-                    { label:"Peak demand week", value:fcInsights.peak_week,
-                      sub:`${fcInsights.peak_demand} units projected`, color:"#FF4D4D" },
-                    { label:"Avg weekly demand", value:Math.round(fcInsights.avg_weekly_demand),
-                      sub:"units per week", color:"#3B9EFF" },
-                    { label:"Reorder recommended", value:fcInsights.reorder_recommended_week,
-                      sub:`Trend: ${fcInsights.trend}`, color:"#2ECC9A" },
+                    {
+                      label: "Peak demand week", value: fcInsights.peak_week,
+                      sub: `${fcInsights.peak_demand} units projected`,
+                      color: T.red, Icon: TrendingUp
+                    },
+                    {
+                      label: "Avg weekly demand", value: Math.round(fcInsights.avg_weekly_demand),
+                      sub: "units per week", color: T.blue, Icon: Package
+                    },
+                    {
+                      label: "Reorder by", value: fcInsights.reorder_recommended_week,
+                      sub: `Trend: ${fcInsights.trend}`, color: T.green, Icon: Bell
+                    },
                   ].map(c => (
-                    <div key={c.label} style={{ ...card, borderTop:`3px solid ${c.color}` }}>
-                      <div style={{ fontSize:10, textTransform:"uppercase", letterSpacing:"0.08em",
-                        color:"rgba(255,255,255,0.35)", marginBottom:6 }}>{c.label}</div>
-                      <div style={{ fontSize:22, fontWeight:700, color:"#fff" }}>{c.value}</div>
-                      <div style={{ fontSize:11, color:"rgba(255,255,255,0.4)", marginTop:4 }}>{c.sub}</div>
+                    <div key={c.label} style={{
+                      ...card, borderTop: `3px solid ${c.color}`, padding: "18px 20px",
+                    }}>
+                      <div style={{
+                        width: 32, height: 32, borderRadius: 8,
+                        background: c.color + "15", display: "flex",
+                        alignItems: "center", justifyContent: "center", marginBottom: 10,
+                      }}>
+                        <c.Icon size={15} color={c.color} strokeWidth={2.5} />
+                      </div>
+                      <div style={{
+                        fontSize: 10, textTransform: "uppercase",
+                        letterSpacing: "0.08em", color: T.textMuted,
+                        marginBottom: 4, fontWeight: 600
+                      }}>{c.label}</div>
+                      <div style={{ fontSize: 24, fontWeight: 800, color: T.text }}>{c.value}</div>
+                      <div style={{ fontSize: 11, color: T.textMuted, marginTop: 4 }}>{c.sub}</div>
                     </div>
                   ))}
                 </div>
@@ -688,76 +856,106 @@ export default function SupplyGuardAI() {
 
           {/* ══ ALERTS ══ */}
           {tab === "alerts" && (
-            <div style={{ display:"flex", flexDirection:"column", gap:20 }}>
-              <div style={{ display:"flex", justifyContent:"space-between",
-                alignItems:"flex-start", flexWrap:"wrap", gap:10 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+              <div style={{
+                display: "flex", justifyContent: "space-between",
+                alignItems: "flex-start", flexWrap: "wrap", gap: 10
+              }}>
                 <div>
-                  <div style={{ fontSize:18, fontWeight:700, color:"#fff",
-                    letterSpacing:"-0.02em", marginBottom:4 }}>Disruption Alerts</div>
-                  <div style={{ fontSize:13, color:"rgba(255,255,255,0.35)" }}>
-                    {activeAlerts.length} active · auto-refreshes every 60s
-                  </div>
+                  <h1 style={{
+                    fontSize: 22, fontWeight: 700, color: T.text,
+                    margin: 0, letterSpacing: "-0.03em"
+                  }}>Disruption Alerts</h1>
+                  <p style={{ fontSize: 13, color: T.textSub, margin: "4px 0 0" }}>
+                    {activeAlerts.length} active · refreshes every 60s
+                  </p>
                 </div>
-                <div style={{ display:"flex", gap:8 }}>
+                <div style={{ display: "flex", gap: 8 }}>
                   {dismissed.length > 0 && (
                     <button onClick={() => setDismissed([])} style={{
-                      background:"transparent", border:"1px solid rgba(255,255,255,0.15)",
-                      color:"rgba(255,255,255,0.4)", borderRadius:7, padding:"5px 12px",
-                      fontSize:12, cursor:"pointer" }}>
-                      Restore {dismissed.length}
+                      display: "flex", alignItems: "center", gap: 5,
+                      background: "transparent", border: `1px solid ${T.border}`,
+                      color: T.textSub, borderRadius: 8, padding: "6px 14px",
+                      fontSize: 12, cursor: "pointer", fontWeight: 500,
+                    }}>
+                      <RefreshCw size={12} /> Restore {dismissed.length}
                     </button>
                   )}
                   <button onClick={fetchAlerts} style={{
-                    background:"rgba(59,158,255,0.1)", border:"1px solid rgba(59,158,255,0.2)",
-                    color:"#3B9EFF", borderRadius:7, padding:"5px 12px",
-                    fontSize:12, cursor:"pointer" }}>
-                    ↻ Refresh
+                    display: "flex", alignItems: "center", gap: 6,
+                    background: T.blue, border: "none", color: "#fff",
+                    borderRadius: 8, padding: "6px 14px", fontSize: 12,
+                    fontWeight: 600, cursor: "pointer",
+                  }}>
+                    <RefreshCw size={12} /> Refresh
                   </button>
                 </div>
               </div>
-              {errors.alerts && <ErrorBanner msg={errors.alerts} onRetry={fetchAlerts}/>}
-              {loading.alerts ? <Spinner/> : (
-                <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
-                  {activeAlerts.map(a => (
-                    <div key={a.id} style={{
-                      ...card,
-                      borderLeft:`3px solid ${sevColor[a.severity]}`,
-                      display:"flex", alignItems:"flex-start", gap:12, padding:"14px 16px",
-                    }}>
-                      <div style={{ width:9, height:9, borderRadius:"50%", flexShrink:0, marginTop:4,
-                        background:sevColor[a.severity],
-                        boxShadow: a.severity==="critical" ? `0 0 10px ${sevColor[a.severity]}` : "none" }}/>
-                      <div style={{ flex:1, minWidth:0 }}>
-                        <div style={{ display:"flex", alignItems:"center", gap:6,
-                          marginBottom:5, flexWrap:"wrap" }}>
-                          <span style={{
-                            fontSize:10, fontWeight:700, letterSpacing:"0.08em",
-                            textTransform:"uppercase", color:sevColor[a.severity],
-                            background: sevColor[a.severity]+"22", padding:"2px 7px", borderRadius:4,
-                          }}>{a.severity}</span>
-                          <span style={{ fontSize:11, color:"rgba(255,255,255,0.25)" }}>{a.region}</span>
-                          {a.type === "supplier" && (
-                            <span style={{ fontSize:10, color:"rgba(59,158,255,0.7)",
-                              background:"rgba(59,158,255,0.1)", padding:"1px 6px", borderRadius:4 }}>
-                              AI detected
-                            </span>
-                          )}
+              {errors.alerts && <ErrorBanner msg={errors.alerts} onRetry={fetchAlerts} />}
+              {loading.alerts ? <Spinner /> : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  {activeAlerts.map(a => {
+                    const SevIcon = sevIcon[a.severity] || AlertTriangle;
+                    return (
+                      <div key={a.id} style={{
+                        ...card, padding: "16px 20px",
+                        borderLeft: `4px solid ${sevColor[a.severity]}`,
+                        display: "flex", alignItems: "flex-start", gap: 14,
+                      }}>
+                        <div style={{
+                          width: 36, height: 36, borderRadius: 9, flexShrink: 0,
+                          background: sevBg[a.severity],
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                        }}>
+                          <SevIcon size={16} color={sevColor[a.severity]} strokeWidth={2.5} />
                         </div>
-                        <div style={{ fontSize:13, color:"rgba(255,255,255,0.85)", marginBottom:3 }}>
-                          {a.message}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{
+                            display: "flex", alignItems: "center",
+                            gap: 8, marginBottom: 5, flexWrap: "wrap"
+                          }}>
+                            <span style={{
+                              fontSize: 10, fontWeight: 700, padding: "2px 8px",
+                              borderRadius: 4, background: sevBg[a.severity],
+                              color: sevColor[a.severity],
+                              textTransform: "uppercase", letterSpacing: "0.05em",
+                            }}>{a.severity}</span>
+                            <span style={{ fontSize: 11, color: T.textMuted }}>{a.region}</span>
+                            {a.type === "supplier" && (
+                              <span style={{
+                                display: "flex", alignItems: "center", gap: 4,
+                                fontSize: 10, color: T.blue, background: T.blueLight,
+                                padding: "1px 7px", borderRadius: 4, fontWeight: 600
+                              }}>
+                                <Zap size={10} color={T.blue} /> AI detected
+                              </span>
+                            )}
+                          </div>
+                          <div style={{
+                            fontSize: 13, color: T.text,
+                            fontWeight: 500, marginBottom: 3
+                          }}>{a.message}</div>
+                          <div style={{ fontSize: 11, color: T.textMuted }}>{a.time_ago}</div>
                         </div>
-                        <div style={{ fontSize:11, color:"rgba(255,255,255,0.3)" }}>{a.time_ago}</div>
+                        <button onClick={() => setDismissed(d => [...d, a.id])} style={{
+                          background: "transparent", border: `1px solid ${T.border}`,
+                          color: T.textMuted, borderRadius: 6, width: 28, height: 28,
+                          cursor: "pointer", display: "flex", alignItems: "center",
+                          justifyContent: "center", flexShrink: 0,
+                        }}>
+                          <X size={13} color={T.textMuted} />
+                        </button>
                       </div>
-                      <button onClick={() => setDismissed(d => [...d, a.id])} style={{
-                        background:"transparent", border:"none", color:"rgba(255,255,255,0.2)",
-                        fontSize:18, cursor:"pointer", lineHeight:1, padding:"0 4px", flexShrink:0,
-                      }}>×</button>
-                    </div>
-                  ))}
+                    );
+                  })}
                   {activeAlerts.length === 0 && (
-                    <div style={{ ...card, textAlign:"center", padding:"40px",
-                      color:"rgba(255,255,255,0.3)", fontSize:14 }}>
-                      All alerts dismissed ✓
+                    <div style={{
+                      ...card, textAlign: "center", padding: "48px",
+                      color: T.textMuted, fontSize: 14, display: "flex",
+                      flexDirection: "column", alignItems: "center", gap: 10
+                    }}>
+                      <CheckCircle2 size={32} color={T.green} strokeWidth={1.5} />
+                      All alerts resolved
                     </div>
                   )}
                 </div>
@@ -767,69 +965,106 @@ export default function SupplyGuardAI() {
         </div>
       </div>
 
-      {/* ── Alternate Supplier Modal ── */}
+      {/* ── Alternate Modal ── */}
       {altModal && (
-        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.7)",
-          display:"flex", alignItems:"center", justifyContent:"center", zIndex:100,
-          backdropFilter:"blur(4px)", padding:16 }}
+        <div style={{
+          position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          zIndex: 100, backdropFilter: "blur(4px)", padding: 16
+        }}
           onClick={() => { setAlt(null); setAltData(null); }}>
           <div onClick={e => e.stopPropagation()} style={{
-            background:"#0E1524", border:"1px solid rgba(255,255,255,0.12)",
-            borderRadius:20, padding:"24px", width:"100%", maxWidth:440,
-            maxHeight:"90vh", overflowY:"auto",
+            background: T.surface, border: `1px solid ${T.border}`,
+            borderRadius: 16, padding: "28px", width: "100%", maxWidth: 440,
+            maxHeight: "90vh", overflowY: "auto",
+            boxShadow: "0 20px 60px rgba(0,0,0,0.15)",
           }}>
-            <div style={{ fontSize:11, textTransform:"uppercase", letterSpacing:"0.1em",
-              color:"rgba(255,255,255,0.3)", marginBottom:8 }}>AI Alternate Sourcing Engine</div>
-            <div style={{ fontSize:17, fontWeight:700, marginBottom:4 }}>
-              Switch from {altModal.name}?
-            </div>
-            <div style={{ fontSize:13, color:"rgba(255,255,255,0.4)", marginBottom:20 }}>
-              Current risk: <span style={{ color:riskColor(altModal.risk_score), fontWeight:600 }}>
-                {Math.round(altModal.risk_score)}
-              </span> · {altModal.country} · {altModal.material}
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+              <div style={{
+                width: 36, height: 36, borderRadius: 9,
+                background: T.blueLight, display: "flex",
+                alignItems: "center", justifyContent: "center"
+              }}>
+                <ArrowRightLeft size={16} color={T.blue} strokeWidth={2.5} />
+              </div>
+              <div>
+                <div style={{
+                  fontSize: 11, textTransform: "uppercase",
+                  letterSpacing: "0.1em", color: T.textMuted,
+                  fontWeight: 600
+                }}>AI Alternate Sourcing</div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: T.text }}>
+                  Switch from {altModal.name}?
+                </div>
+              </div>
             </div>
 
-            {altLoading && <Spinner/>}
+            <div style={{
+              fontSize: 13, color: T.textSub, marginBottom: 20,
+              padding: "10px 14px", background: T.redLight,
+              borderRadius: 9, display: "flex", alignItems: "center", gap: 8
+            }}>
+              <AlertTriangle size={14} color={T.red} />
+              Current risk: <b style={{ color: T.red }}>{Math.round(altModal.risk_score)}</b>
+              {" · "}{altModal.country} · {altModal.material}
+            </div>
+
+            {altLoading && <Spinner />}
 
             {altData && !altData.error && altData.alternates?.map((a, i) => (
-              <div key={i} style={{ background:"rgba(46,204,154,0.06)",
-                border:"1px solid rgba(46,204,154,0.2)", borderRadius:12,
-                padding:"14px 16px", marginBottom:10 }}>
-                <div style={{ display:"flex", justifyContent:"space-between",
-                  alignItems:"center", flexWrap:"wrap", gap:8 }}>
+              <div key={i} style={{
+                border: `1px solid ${T.border}`, borderRadius: 12,
+                padding: "16px", marginBottom: 10, background: T.bg,
+              }}>
+                <div style={{
+                  display: "flex", justifyContent: "space-between",
+                  alignItems: "center", flexWrap: "wrap", gap: 8
+                }}>
                   <div>
-                    <div style={{ fontWeight:600, fontSize:14 }}>{a.name}</div>
-                    <div style={{ fontSize:12, color:"rgba(255,255,255,0.4)" }}>
-                      {a.country} · {a.material}
-                    </div>
+                    <div style={{ fontWeight: 700, fontSize: 14, color: T.text }}>{a.name}</div>
+                    <div style={{ fontSize: 12, color: T.textSub }}>{a.country} · {a.material}</div>
                   </div>
-                  <RiskBadge score={a.risk_score}/>
+                  <Badge score={a.risk_score} />
                 </div>
-                <div style={{ display:"flex", gap:12, marginTop:10, fontSize:12,
-                  color:"rgba(255,255,255,0.5)", flexWrap:"wrap" }}>
-                  <span>Lead: <b style={{ color:"#fff" }}>{a.lead_time}d</b></span>
-                  <span>Rating: <b style={{ color:"#F5A623" }}>{a.rating}★</b></span>
-                  <span style={{ color: a.recommendation==="Strongly recommended" ? "#2ECC9A" : "#F5A623" }}>
-                    {a.recommendation}
-                  </span>
+                <div style={{
+                  display: "flex", gap: 12, marginTop: 10,
+                  fontSize: 12, color: T.textSub, flexWrap: "wrap"
+                }}>
+                  <span>Lead: <b style={{ color: T.text }}>{a.lead_time}d</b></span>
+                  <span>Rating: <b style={{ color: "#F59E0B" }}>{a.rating}★</b></span>
+                  <span style={{ color: T.green, fontWeight: 600 }}>{a.recommendation}</span>
                 </div>
-                <div style={{ marginTop:8, fontSize:12, color:"#2ECC9A" }}>
+                <div style={{
+                  marginTop: 10, fontSize: 12, color: T.green,
+                  fontWeight: 600, background: T.greenLight,
+                  padding: "6px 12px", borderRadius: 6,
+                  display: "flex", alignItems: "center", gap: 6
+                }}>
+                  <CheckCircle2 size={13} color={T.green} />
                   ↓ {a.risk_reduction} pts lower risk vs current supplier
                 </div>
               </div>
             ))}
 
             {altData?.error && (
-              <div style={{ fontSize:13, color:"#FF4D4D", marginBottom:16 }}>
-                Could not load alternates from API.
+              <div style={{
+                fontSize: 13, color: T.red, marginBottom: 16,
+                background: T.redLight, padding: "10px 14px",
+                borderRadius: 8, display: "flex", alignItems: "center", gap: 8
+              }}>
+                <AlertTriangle size={14} color={T.red} />
+                Could not load alternates. Please try again.
               </div>
             )}
 
             <button onClick={() => { setAlt(null); setAltData(null); }} style={{
-              width:"100%", marginTop:6, padding:"10px", borderRadius:9,
-              background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.1)",
-              color:"rgba(255,255,255,0.5)", fontSize:13, cursor:"pointer",
-            }}>Close</button>
+              width: "100%", marginTop: 8, padding: "10px", borderRadius: 9,
+              background: T.bg, border: `1px solid ${T.border}`,
+              color: T.textSub, fontSize: 13, cursor: "pointer", fontWeight: 500,
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+            }}>
+              <X size={14} color={T.textMuted} /> Close
+            </button>
           </div>
         </div>
       )}
