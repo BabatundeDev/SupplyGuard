@@ -6,7 +6,7 @@ import {
 import {
   Menu, X, Factory, AlertTriangle, BarChart2, RefreshCw,
   ArrowRightLeft, TrendingUp, Package, Bell, CheckCircle2,
-  ChevronDown, ChevronUp, Zap, ShieldAlert, Shield, Activity,
+  ChevronDown, ChevronUp, Zap, ShieldAlert, Activity,
   LayoutDashboard, Truck, LineChart, AlertOctagon,
 } from "lucide-react";
 
